@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_tcmu_runner {
@@ -21,5 +21,5 @@ function start_tcmu_runner {
 
   log "SUCCESS"
   # start tcmu-runner
-  exec tcmu-runner --tcmu-log-dir "${TCMU_RUNNER_LOG_DIR}"
+  _exec tcmu-runner --tcmu-log-dir "${TCMU_RUNNER_LOG_DIR}"
 }

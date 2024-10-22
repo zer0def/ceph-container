@@ -34,7 +34,7 @@ RUN \
     __DOCKERFILE_INSTALL__ && \
     __QAT_ACCELERATION__
     # Clean container, starting with record of current size (strip / from end)
-    INITIAL_SIZE="$(bash -c 'sz="$(du -sm --exclude=/proc /)" ; echo "${sz%*/}"')" && \
+    INITIAL_SIZE="$(sh -c 'sz="$(du -smx /)" ; echo "${sz%*/}"')" && \
     #
     #
     # Perform any final cleanup actions like package manager cleaning, etc.
@@ -47,7 +47,7 @@ RUN \
     #
     #
     # Report size savings (strip / from end)
-    FINAL_SIZE="$(bash -c 'sz="$(du -sm --exclude=/proc /)" ; echo "${sz%*/}"')" && \
+    FINAL_SIZE="$(sh -c 'sz="$(du -smx /)" ; echo "${sz%*/}"')" && \
     REMOVED_SIZE=$((INITIAL_SIZE - FINAL_SIZE)) && \
     echo "Cleaning process removed ${REMOVED_SIZE}MB" && \
     echo "Dropped container size from ${INITIAL_SIZE}MB to ${FINAL_SIZE}MB" && \

@@ -32,7 +32,7 @@ done
 set -e
 set -o pipefail
 kubectl create namespace ceph; 
-(( hfV++ ))
+hfV=$((${hfV}+1))
 echo "Going to create new helm package version: 0.${PatchV}.${hfV}"
 echo "pack&deploy hfV=$hfV" 
 helm package --version 0.${PatchV}.${hfV} ceph

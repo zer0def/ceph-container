@@ -1,0 +1,1 @@
+apk add --no-cache __DAEMON_PACKAGES__ && __WEB_INSTALL_CONFD__ && __WEB_INSTALL_KUBECTL__ && __WEB_INSTALL_ETCDCTL__

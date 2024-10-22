@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_rbd_target_gw {
@@ -21,5 +21,5 @@ function start_rbd_target_gw {
 
   log "SUCCESS"
   # start rbd-target-gw
-  exec /usr/bin/rbd-target-gw
+  _exec /usr/bin/rbd-target-gw
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_mgr {
@@ -12,12 +12,12 @@ function start_mgr {
   if [ ! -e "$MGR_KEYRING" ]; then
     check_admin_key
     # Create ceph-mgr key
-    ceph "${CLI_OPTS[@]}" auth get-or-create mgr."$MGR_NAME" mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o "$MGR_KEYRING"
-    chown "${CHOWN_OPT[@]}" ceph. "$MGR_KEYRING"
+    ceph ${CLI_OPTS} auth get-or-create mgr."$MGR_NAME" mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o "$MGR_KEYRING"
+    chown ${CHOWN_OPT} ceph. "$MGR_KEYRING"
     chmod 600 "$MGR_KEYRING"
   fi
 
   log "SUCCESS"
   # start ceph-mgr
-  exec /usr/bin/ceph-mgr "${DAEMON_OPTS[@]}" -i "$MGR_NAME"
+  _exec /usr/bin/ceph-mgr ${DAEMON_OPTS} -i "$MGR_NAME"
 }

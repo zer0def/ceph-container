@@ -1,0 +1,49 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 03b178d1d..ae6489e97 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -84,7 +84,7 @@ python-source = "src"
+ python-packages = ["cryptography"]
+ manifest-path = "src/rust/Cargo.toml"
+ module-name = "cryptography.hazmat.bindings._rust"
+-locked = true
++locked = false
+ sdist-generator = "git"
+ features = ["pyo3/abi3-py37"]
+ include = [
+diff --git a/src/rust/Cargo.toml b/src/rust/Cargo.toml
+index 4a91705de..8265582bc 100644
+--- a/src/rust/Cargo.toml
++++ b/src/rust/Cargo.toml
+@@ -17,7 +17,7 @@ rust-version.workspace = true
+ [dependencies]
+ once_cell = "1"
+ cfg-if = "1"
+-pyo3 = { version = "0.22.2", features = ["abi3"] }
++pyo3 = { git = "https://github.com/zer0def/pyo3", branch = "subint-0.22", features = ["abi3", "unsafe-allow-subinterpreters"] }
+ asn1 = { version = "0.16.2", default-features = false }
+ cryptography-cffi = { path = "cryptography-cffi" }
+ cryptography-keepalive = { path = "cryptography-keepalive" }
+diff --git a/src/rust/cryptography-cffi/Cargo.toml b/src/rust/cryptography-cffi/Cargo.toml
+index f983dbdda..eaa17360b 100644
+--- a/src/rust/cryptography-cffi/Cargo.toml
++++ b/src/rust/cryptography-cffi/Cargo.toml
+@@ -7,7 +7,7 @@ publish.workspace = true
+ rust-version.workspace = true
+ 
+ [dependencies]
+-pyo3 = { version = "0.22.2", features = ["abi3"] }
++pyo3 = { git = "https://github.com/zer0def/pyo3", branch = "subint-0.22", features = ["abi3", "unsafe-allow-subinterpreters"] }
+ openssl-sys = "0.9.103"
+ 
+ [build-dependencies]
+diff --git a/src/rust/cryptography-keepalive/Cargo.toml b/src/rust/cryptography-keepalive/Cargo.toml
+index d281a1b08..b170891f9 100644
+--- a/src/rust/cryptography-keepalive/Cargo.toml
++++ b/src/rust/cryptography-keepalive/Cargo.toml
+@@ -7,4 +7,4 @@ publish.workspace = true
+ rust-version.workspace = true
+ 
+ [dependencies]
+-pyo3 = { version = "0.22.2", features = ["abi3"] }
++pyo3 = { git = "https://github.com/zer0def/pyo3", branch = "subint-0.22", features = ["abi3", "unsafe-allow-subinterpreters"] }

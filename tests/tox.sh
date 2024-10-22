@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/sh -ex
 
 set -ex
 
@@ -22,7 +22,7 @@ export WORKSPACE=$WORKSPACE
 export CEPH_ANSIBLE_SCENARIO_PATH=$CEPH_ANSIBLE_SCENARIO_PATH
 EOF
 
-sudo -s bash -c 'find /tmp -name pause.pid -uid $SUDO_UID -delete'
+sudo -s sh -c 'find /tmp -name pause.pid -uid $SUDO_UID -delete'
 
 # Check distro and install deps
 if command -v apt-get &>/dev/null; then
@@ -42,7 +42,7 @@ git clone -b "$CEPH_ANSIBLE_BRANCH" --single-branch https://github.com/ceph/ceph
 pip install -r "$TOXINIDIR"/ceph-ansible/tests/requirements.txt
 ansible-galaxy install -r "${TOXINIDIR}"/ceph-ansible/requirements.yml -v
 
-bash "$WORKSPACE"/travis-builds/purge_cluster.sh
+sh "$WORKSPACE"/travis-builds/purge_cluster.sh
 # XXX purge_cluster only stops containers, it doesn't really remove them so try to
 # remove them for real
 containers_to_remove=$(docker ps -a -q)
@@ -67,10 +67,10 @@ cd "$WORKSPACE"
 FLAVOR="main,centos,8"
 
 # build everything that was touched to make sure build succeeds
-mapfile -t FLAVOR_ARRAY < <(make flavors.modified)
+FLAVOR_ARRAY="$(make flavors.modified)"
 
 if [[ "$NIGHTLY" != 'TRUE' ]]; then
-  if [[ "${#FLAVOR_ARRAY[@]}" -eq "0" ]]; then
+  if [[ "$(echo ${FLAVOR_ARRAY} | tr '[:space:]' '\n' | wc -l)" -eq "0" ]]; then
     echo "The ceph-container code has not changed."
     echo "Nothing to test here."
     echo "SUCCESS"
@@ -78,8 +78,8 @@ if [[ "$NIGHTLY" != 'TRUE' ]]; then
     exit 0
   fi
 
-  if [[ "${#FLAVOR_ARRAY[@]}" -eq "1" ]]; then
-    FLAVOR="${FLAVOR_ARRAY[0]}"
+  if [[ "$(echo ${FLAVOR_ARRAY} | tr '[:space:]' '\n' | wc -l)" -eq "1" ]]; then
+    FLAVOR="${FLAVOR_ARRAY%% *}"
   fi
 fi
 
@@ -111,18 +111,18 @@ if sudo firewall-cmd --state; then
 fi
 
 cd "$CEPH_ANSIBLE_SCENARIO_PATH"
-bash "$TOXINIDIR"/ceph-ansible/tests/scripts/vagrant_up.sh --no-provision --provider="$VAGRANT_PROVIDER"
+sh "$TOXINIDIR"/ceph-ansible/tests/scripts/vagrant_up.sh --no-provision --provider="$VAGRANT_PROVIDER"
 
-bash "$TOXINIDIR"/ceph-ansible/tests/scripts/generate_ssh_config.sh "$CEPH_ANSIBLE_SCENARIO_PATH"
+sh "$TOXINIDIR"/ceph-ansible/tests/scripts/generate_ssh_config.sh "$CEPH_ANSIBLE_SCENARIO_PATH"
 
 export ANSIBLE_SSH_ARGS="-F $CEPH_ANSIBLE_SCENARIO_PATH/vagrant_ssh_config -o ControlMaster=auto -o ControlPersist=600s -o PreferredAuthentications=publickey"
 
 # runs a playbook to configure nodes for testing
 ansible-playbook -vv -i "$CEPH_ANSIBLE_SCENARIO_PATH"/hosts "$TOXINIDIR"/tests/setup.yml --extra-vars="ceph_docker_registry=$REGISTRY_ADDRESS"
-if [[ $CEPH_ANSIBLE_SCENARIO_PATH =~ "all_daemons" ]]; then
-  ANSIBLE_PLAYBOOK_ARGS=(--limit 'osds:!osd2')
+if echo -n "${CEPH_ANSIBLE_SCENARIO_PATH}" | grep -q "all_daemons"; then
+  ANSIBLE_PLAYBOOK_ARGS="--limit 'osds:!osd2'"
 fi
-ansible-playbook -vv -i "$CEPH_ANSIBLE_SCENARIO_PATH"/hosts "$TOXINIDIR"/ceph-ansible/tests/functional/lvm_setup.yml "${ANSIBLE_PLAYBOOK_ARGS[@]}"
+ansible-playbook -vv -i "$CEPH_ANSIBLE_SCENARIO_PATH"/hosts "$TOXINIDIR"/ceph-ansible/tests/functional/lvm_setup.yml ${ANSIBLE_PLAYBOOK_ARGS}
 ansible-playbook -vv -i "$CEPH_ANSIBLE_SCENARIO_PATH"/hosts "$TOXINIDIR"/ceph-ansible/tests/functional/setup.yml
 ansible-playbook -vv -i "$CEPH_ANSIBLE_SCENARIO_PATH"/hosts "$TOXINIDIR"/ceph-ansible/site-container.yml.sample --extra-vars="ceph_docker_image_tag=latest-main ceph_docker_registry=$REGISTRY_ADDRESS ceph_docker_image=ceph/daemon yes_i_know=true"
 
@@ -132,4 +132,4 @@ py.test --reruns 20 --reruns-delay 3 -n 8 --sudo -v --connection=ansible --ansib
 #################################################################################
 cd "$WORKSPACE"
 make clean.all
-bash "$TOXINIDIR"/tests/teardown.sh
+sh "$TOXINIDIR"/tests/teardown.sh

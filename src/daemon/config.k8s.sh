@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -17,14 +17,13 @@ function get_mon_config {
   while [[ -z "${monmap_add// }" && "${timeout}" -gt 0 ]]; do
     # Get the ceph mon pods (name and IP) from the Kubernetes API. Formatted as a set of monmap params
     if [[ ${K8S_HOST_NETWORK} -eq 0 ]]; then
-      monmap_add=$(kubectl get pods --selector="${K8S_MON_SELECTOR}" -o template --template="{{range .items}}{{if .status.podIP}}--add {{.metadata.name}} {{.status.podIP}}:6789 {{end}} {{end}}")
+      monmap_add="$(kubectl get pods --selector="${K8S_MON_SELECTOR}" -o template --template="{{range .items}}{{if .status.podIP}}--add {{.metadata.name}} {{.status.podIP}}:6789 {{end}} {{end}}")"
     else
-      monmap_add=$(kubectl get pods --selector="${K8S_MON_SELECTOR}" -o template --template="{{range .items}}{{if .status.podIP}}--add {{.spec.nodeName}} {{.status.podIP}}:6789 {{end}} {{end}}")
+      monmap_add="$(kubectl get pods --selector="${K8S_MON_SELECTOR}" -o template --template="{{range .items}}{{if .status.podIP}}--add {{.spec.nodeName}} {{.status.podIP}}:6789 {{end}} {{end}}")"
     fi
-    (( timeout-- ))
+    timeout=$((${timeout}-1))
     sleep 1
   done
-  IFS=" " read -r -a monmap_add_array <<< "${monmap_add}"
 
   if [[ -z "${monmap_add// }" ]]; then
     log "No Ceph Monitor pods discovered. Abort mission!"
@@ -32,7 +31,7 @@ function get_mon_config {
   fi
 
   # Create a monmap with the Pod Names and IP
-  monmaptool --create "${monmap_add_array[@]}" --fsid "${fsid}" "$MONMAP"
+  monmaptool --create ${monmap_add} --fsid "${fsid}" "$MONMAP"
 
 }
 

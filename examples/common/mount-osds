@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # This script searches for ceph OSD devices and mounts them according to OSD id.
 
 ceph_root="/osd"
@@ -31,15 +31,13 @@ function trim()
 function find_osds()
 {
     local osds
-    declare -a dev_list
-    mapfile dev_list < <(lsblk -l -n -o NAME --exclude 1,7,11) # note -I not available in all versions of lsblk, use exclude instead
-    for dev in "${dev_list[@]}"; do
+    for dev in $(lsblk -l -n -o NAME --exclude 1,7,11); do  # note -I not available in all versions of lsblk, use exclude instead
         dev=/dev/$(trim "$dev")
         if blkid -p "$dev" | fgrep -q '4fbd7e29-9d25-41b8-afd0-062c0ceff05d'; then
-            osds+=($dev)
+            osds="$osds $dev"
         fi
     done
-    echo "${osds[@]}"
+    echo ${osds}
 }
 
 # Get filesystem type - xfs,btrfs,ext4 etc

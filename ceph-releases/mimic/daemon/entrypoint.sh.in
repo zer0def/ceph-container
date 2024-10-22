@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # We need the -m to track child process in docker_exec.sh
 # It is expected to receive some SIGCHLD, so -m is mandatory
@@ -40,7 +40,7 @@ CEPH_DAEMON=$(to_lowercase "${CEPH_DAEMON}")
 
 create_mandatory_directories
 
-if [[ ! "x86_64 aarch64" =~ $CEPH_ARCH  ]] ; then
+if echo -n "${CEPH_ARCH}" | grep -qvE 'x86_64|aarch64'; then
     echo "$CEPH_DAEMON is not supported on $CEPH_ARCH" >&2
     exit 1
 fi
@@ -158,7 +158,7 @@ case "$CEPH_DAEMON" in
     ;;
   disk_introspection)
     # TAG: disk_introspection
-    if [[ "$KV_TYPE" =~ k8s|kubernetes ]]; then
+    if echo -n "${KV_TYPE}" | grep -qE 'k8s|kubernetes'; then
       source /opt/ceph-container/bin/disk_introspection.sh
     else
       log "You can not use the disk introspection method outside a Kubernetes environment"

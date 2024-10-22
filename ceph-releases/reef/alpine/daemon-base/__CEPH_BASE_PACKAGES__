@@ -1,0 +1,11 @@
+ca-certificates e2fsprogs \
+ceph18-common ceph18-mon ceph18-osd ceph18-utils \
+__CEPHFS_PACKAGES__ \
+rbd-mirror18 \
+__CEPH_MGR_PACKAGES__ \
+bash eudev gptfdisk kmod lvm2 nvme-cli sg3_utils smartmontools uuidgen \
+__UTIL_PACKAGES__ \
+__RADOSGW_PACKAGES__ \
+__GANESHA_PACKAGES__ \
+__CSI_PACKAGES__ \
+__CEPH_VOLUME_PACKAGE__

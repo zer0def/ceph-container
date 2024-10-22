@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 kubectl delete secret ceph-secret-admin --namespace kube-system
 kubectl get pv | awk '/ceph/ {print $1}' | xargs -I{} kubectl delete pv {}

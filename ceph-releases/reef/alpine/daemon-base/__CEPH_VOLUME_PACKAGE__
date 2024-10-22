@@ -1,0 +1,1 @@
+ceph18-volume coreutils cryptsetup device-mapper lsblk sgdisk wipefs

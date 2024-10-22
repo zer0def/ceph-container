@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # use -E so that trap ERR works with set -e
 set -E
@@ -14,7 +14,7 @@ function do_stayalive {
   CONTAINER_ID=$(sed -n 's|.*/[docker|libpod]*-\(.*\).scope$|\1|p' /proc/self/cgroup |uniq)
 
   echo "An issue occured and you asked me to stay alive."
-  echo "You can connect to me with: sudo docker exec -i -t $CONTAINER_ID /bin/bash"
+  echo "You can connect to me with: sudo docker exec -i -t $CONTAINER_ID /bin/sh"
   echo "The current environment variables will be reloaded by this bash to be in a similar context."
   echo "When debugging is over stop me with: pkill sleep"
   echo "I'll sleep endlessly waiting for you darling, bye bye"
@@ -68,7 +68,7 @@ function teardown {
   echo
   echo "teardown: Process $child_for_exec is terminated"
 
-  if [[ "$signal_name" =~ SIGTERM|SIGCHLD ]]; then
+  if echo -n "${signal_name}" | grep -qE 'SIGTERM|SIGCHLD'; then
     # Execute the cleanup post-script if any is declared
     declare -F sigterm_cleanup_post && sigterm_cleanup_post
   else
@@ -131,7 +131,7 @@ function _err {
   fi
   }
 
-function exec {
+function _exec {
   # This function overrides the built-in exec() call
   # It starts the process in background to catch ERR but
   # as per docker requirement, forward the SIGTERM to it.

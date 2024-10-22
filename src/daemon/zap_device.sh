@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # Get a list of child devices from a root device
@@ -71,7 +71,7 @@ function get_all_ceph_devices {
 
     # if the partlabel doesn't start with 'ceph', it means this is not a ceph used partition.
     # in that case, simply jump to the next iteration.
-    if [[ ! "$partlabel" =~ ^ceph.* ]]; then
+    if echo -n "${partlabel}" | grep -qvE '^ceph'; then
       continue
     fi
 
@@ -80,12 +80,12 @@ function get_all_ceph_devices {
     local parent_dev
     parent_dev=$(lsblk --nodeps -pno PKNAME "${device}")
     if [ -n "${parent_dev}" ]; then
-      all_devices+=("${parent_dev}")
+      all_devices="${all_devices} ${parent_dev}"
     fi
   done
 
   # Finally, print all the devices with only 1 occurence for each device (uniq)
-  echo "${all_devices[@]}" | tr ' ' '\n' | sort -u
+  echo ${all_devices} | tr ' ' '\n' | sort -u  # this 'tr' might not even be necessary now
 }
 
 function zap_device {

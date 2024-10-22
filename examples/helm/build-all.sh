@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 function list_dirs () {
   find . -maxdepth 1 -type d | tail -n +2 | sed 's|^./||g'
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_restapi {
@@ -24,5 +24,5 @@ ENDHERE
   log "SUCCESS"
 
   # start ceph-rest-api
-  exec /usr/bin/ceph-rest-api "${CLI_OPTS[@]}" -n client.admin
+  _exec /usr/bin/ceph-rest-api ${CLI_OPTS} -n client.admin
 }

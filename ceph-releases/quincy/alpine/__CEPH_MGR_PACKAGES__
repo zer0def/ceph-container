@@ -1,0 +1,1 @@
+ceph17-cephadm ceph17-mgr ceph17-mgr-dashboard ceph17-mgr-k8events ceph17-mgr-rook openssh-keygen

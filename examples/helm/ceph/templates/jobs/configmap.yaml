@@ -45,7 +45,7 @@ data:
     )
     print(base64.b64encode(header + key).decode('ascii'))
   ceph-keys.sh: |
-    #!/bin/bash
+    #!/bin/sh
     set -e
     function ceph_gen_key () {
       python ${CEPH_GEN_DIR}/ceph-key.py

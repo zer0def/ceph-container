@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_rgw {
@@ -21,14 +21,14 @@ function start_rgw {
     ceph_health client.bootstrap-rgw "$RGW_BOOTSTRAP_KEYRING"
 
     # Generate the RGW key
-    ceph "${CLI_OPTS[@]}" --name client.bootstrap-rgw --keyring "$RGW_BOOTSTRAP_KEYRING" auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
-    chown "${CHOWN_OPT[@]}" ceph. "$RGW_KEYRING"
+    ceph ${CLI_OPTS} --name client.bootstrap-rgw --keyring "$RGW_BOOTSTRAP_KEYRING" auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
+    chown ${CHOWN_OPT} ceph. "$RGW_KEYRING"
     chmod 0600 "$RGW_KEYRING"
   fi
 
   log "SUCCESS"
 
-  exec /usr/bin/radosgw "${DAEMON_OPTS[@]}" -n client.rgw."${RGW_NAME}" -k "$RGW_KEYRING"
+  _exec /usr/bin/radosgw ${DAEMON_OPTS} -n client.rgw."${RGW_NAME}" -k "$RGW_KEYRING"
 }
 
 function create_rgw_user {
@@ -44,5 +44,5 @@ function create_rgw_user {
     user_key="--access-key=${RGW_USER_USER_KEY} --secret=${RGW_USER_SECRET_KEY}"
   fi
 
-  exec radosgw-admin user create --uid="${RGW_USER}" "${user_key}" --display-name="RGW ${RGW_USER} User" -c /etc/ceph/"${CLUSTER}".conf
+  _exec radosgw-admin user create --uid="${RGW_USER}" "${user_key}" --display-name="RGW ${RGW_USER} User" -c /etc/ceph/"${CLUSTER}".conf
 }
