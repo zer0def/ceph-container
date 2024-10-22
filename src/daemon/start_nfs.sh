@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_rpc {
@@ -25,8 +25,8 @@ function start_nfs {
     ceph_health client.bootstrap-rgw "$RGW_BOOTSTRAP_KEYRING"
 
     # Generate the RGW key
-    ceph "${CLI_OPTS[@]}" --name client.bootstrap-rgw --keyring "$RGW_BOOTSTRAP_KEYRING" auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
-    chown "${CHOWN_OPT[@]}" ceph. "$RGW_KEYRING"
+    ceph ${CLI_OPTS} --name client.bootstrap-rgw --keyring "$RGW_BOOTSTRAP_KEYRING" auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
+    chown ${CHOWN_OPT} ceph. "$RGW_KEYRING"
     chmod 0600 "$RGW_KEYRING"
   fi
 
@@ -35,5 +35,5 @@ function start_nfs {
 
   log "SUCCESS"
   # start ganesha, logging both to STDOUT and to the configured location
-  exec /usr/bin/ganesha.nfsd "${GANESHA_OPTIONS[@]}" -F -L STDOUT "${GANESHA_EPOCH}"
+  _exec /usr/bin/ganesha.nfsd ${GANESHA_OPTIONS} -F -L STDOUT "${GANESHA_EPOCH}"
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -euo pipefail
 
 CEPH_VERSION_SPEC=$1
@@ -17,7 +17,7 @@ function parse_ceph_version_spec {
   # Let's consider CEPH_VERSION_SPEC=luminous-12.2.0-1
   for separator in "=" "-"; do
     # If the line doesn't have a separator, let's try the next one
-    if [[ ! "${version_spec}" =~ ${separator} ]]; then
+    if echo -n "${version_spec}" | grep -qv "${separator}"; then
       continue;
     fi
     ceph_ref="${CEPH_VERSION_SPEC%%"${separator}"*}"
@@ -64,7 +64,7 @@ function get_ceph_version {
 }
 
 ceph_version=$(get_ceph_version "${CEPH_VERSION_SPEC}")
-if [[ "${CEPH_VERSION_SPEC}" =~ wip ]]; then
+if echo -n "${CEPH_VERSION_SPEC}" | grep -q wip]; then
   ceph_ref=${CEPH_VERSION_SPEC}
   ceph_point_release=""
 else

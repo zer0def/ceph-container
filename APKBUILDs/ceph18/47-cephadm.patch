@@ -1,0 +1,93 @@
+commit bce8a8c7898c581274eb0ec0dc433a918307e6b9
+Author: zer0def <zer0def@zer0def.0>
+Date:   Sun Nov 24 18:40:02 2024 +0100
+
+    wip: alpine iteration
+
+diff --git a/src/cephadm/cephadm.py b/src/cephadm/cephadm.py
+index d6492fbf182..94cbcebc4b8 100755
+--- a/src/cephadm/cephadm.py
++++ b/src/cephadm/cephadm.py
+@@ -8363,14 +8363,15 @@ def _rm_cluster(ctx: CephadmContext, keep_logs: bool, zap_osds: bool) -> None:
+ def check_time_sync(ctx, enabler=None):
+     # type: (CephadmContext, Optional[Packager]) -> bool
+     units = [
+-        'chrony.service',  # 18.04 (at least)
+-        'chronyd.service',  # el / opensuse
++        'chrony.service', 'chrony',   # 18.04 (at least)
++        'chronyd.service', 'chronyd',  # el / opensuse
+         'systemd-timesyncd.service',
+-        'ntpd.service',  # el7 (at least)
+-        'ntp.service',  # 18.04 (at least)
+-        'ntpsec.service',  # 20.04 (at least) / buster
+-        'openntpd.service',  # ubuntu / debian
+-        'timemaster.service',  # linuxptp on ubuntu/debian
++        'systemd-timesyncd',
++        'ntpd.service', 'ntpd',  # el7 (at least)
++        'ntp.service', 'ntp',  # 18.04 (at least)
++        'ntpsec.service', 'ntpsec',  # 20.04 (at least) / buster
++        'openntpd.service', 'openntpd',  # ubuntu / debian
++        'timemaster.service', 'timemaster',  # linuxptp on ubuntu/debian
+     ]
+     if not check_units(ctx, units, enabler):
+         logger.warning('No time sync service is running; checked for %s' % units)
+@@ -9103,6 +9104,48 @@ class Zypper(Packager):
+         self.install(['podman'])
+ 
+ 
++class Apk(Packager):
++    DISTRO_NAMES = ['alpine']
++
++    def __init__(
++        self,
++        ctx: CephadmContext,
++        stable: Optional[str],
++        version: Optional[str],
++        branch: Optional[str],
++        commit: Optional[str],
++        distro: Optional[str],
++        distro_version: Optional[str],
++    ) -> None:
++        super(Apk, self).__init__(
++            ctx, stable=stable, version=version, branch=branch, commit=commit
++        )
++        assert distro
++        assert distro_version
++        self.ctx = ctx
++        self.distro = distro
++        self.distro_version = distro_version
++
++    def install(self, ls: List[str]) -> None:
++        logger.info('Installing packages %s...' % ls)
++        call_throws(self.ctx, ['apk', 'add', '--no-cache'] + ls)
++
++    def install_podman(self) -> None:
++        self.install(['podman'])
++
++    # technically not true, needs record additions in /etc/apk/repositories
++    def add_repo(self) -> None:
++        return
++
++    def rm_repo(self) -> None:
++        return
++
++    # slightly presumptive that alpine always runs openrc init
++    def enable_service(self, service: str) -> None:
++        call_throws(self.ctx, ['rc-update', 'add', service])
++        call_throws(self.ctx, ['rc-service', service, 'start'])
++
++
+ def create_packager(ctx: CephadmContext,
+                     stable: Optional[str] = None, version: Optional[str] = None,
+                     branch: Optional[str] = None, commit: Optional[str] = None) -> Packager:
+@@ -9120,6 +9163,10 @@ def create_packager(ctx: CephadmContext,
+         return Zypper(ctx, stable=stable, version=version,
+                       branch=branch, commit=commit,
+                       distro=distro, distro_version=distro_version)
++    elif distro in Apk.DISTRO_NAMES:
++        return Apk(ctx, stable=stable, version=version,
++                   branch=branch, commit=commit,
++                   distro=distro, distro_version=distro_version)
+     raise Error('Distro %s version %s not supported' % (distro, distro_version))
+ 
+ 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -euo pipefail
 
 # Integration test to make sure staging is working properly

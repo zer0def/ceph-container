@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/sh -x
 
 # shellcheck source=/dev/null
 . "$WORKSPACE/.tox_vars"

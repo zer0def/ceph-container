@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -ex
 
 #############
@@ -20,7 +20,7 @@ function install_docker {
 
 function build_ceph_imgs {
   echo "Build Ceph container image(s)"
-  for ceph_release in "${CEPH_RELEASES[@]}"; do
+  for ceph_release in ${CEPH_RELEASES}; do
     CENTOS_RELEASE=$(_centos_release "${ceph_release}")
     make BASEOS_TAG=stream"${CENTOS_RELEASE}" DAEMON_BASE_TAG=daemon-base:"$RELEASE"-"${ceph_release}"-centos-stream"${CENTOS_RELEASE}"-aarch64 DAEMON_TAG=daemon:"$RELEASE"-"${ceph_release}"-centos-stream"${CENTOS_RELEASE}"-aarch64 RELEASE="${RELEASE}" FLAVORS="${ceph_release},centos-arm64,${CENTOS_RELEASE}" BASEOS_REGISTRY="${CONTAINER_REPO_HOSTNAME}/centos" BASEOS_REPO=centos TAG_REGISTRY="${CONTAINER_REPO_ORGANIZATION}" build
   done
@@ -29,7 +29,7 @@ function build_ceph_imgs {
 
 function push_ceph_imgs {
   echo "Push Ceph container image(s) to the registry"
-  for ceph_release in "${CEPH_RELEASES[@]}"; do
+  for ceph_release in ${CEPH_RELEASES}; do
     CENTOS_RELEASE=$(_centos_release "${ceph_release}")
     make BASEOS_TAG=stream"${CENTOS_RELEASE}" DAEMON_BASE_TAG=daemon-base:"$RELEASE"-"${ceph_release}"-centos-stream"${CENTOS_RELEASE}"-aarch64 DAEMON_TAG=daemon:"$RELEASE"-"${ceph_release}"-centos-stream"${CENTOS_RELEASE}"-aarch64 RELEASE="${RELEASE}" FLAVORS="${ceph_release},centos-arm64,${CENTOS_RELEASE}" BASEOS_REGISTRY="${CONTAINER_REPO_HOSTNAME}/centos" BASEOS_REPO=centos TAG_REGISTRY="${CONTAINER_REPO_ORGANIZATION}" push
   done
@@ -52,7 +52,7 @@ function wait_for_arm_images {
 # MAIN #
 ########
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$( cd "$(dirname "${0}")" && pwd )"
 # shellcheck source=./
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR"/build-push-ceph-container-imgs.sh

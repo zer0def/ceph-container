@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 
@@ -173,17 +173,17 @@ function start_mon {
       v2v1=$(ceph-conf -c /etc/ceph/"${CLUSTER}".conf 'mon host' | tr ',' '\n' | grep -c "${MON_IP_NO_BRACKETS}")
       # in case of v2+v1 configuration : [v2:xxxx:3300,v1:xxxx:6789]
       if [ "${v2v1}" -eq 2 ]; then
-        timeout 7 ceph "${CLI_OPTS[@]}" mon add "${MON_NAME}" "${MON_IP_NO_BRACKETS}" || true
+        timeout 7 ceph ${CLI_OPTS} mon add "${MON_NAME}" "${MON_IP_NO_BRACKETS}" || true
       # with v2 only : [v2:xxxx:3300]
       else
-        timeout 7 ceph "${CLI_OPTS[@]}" mon add "${MON_NAME}" "${MON_IP}":"${MON_PORT}" || true
+        timeout 7 ceph ${CLI_OPTS} mon add "${MON_NAME}" "${MON_IP}":"${MON_PORT}" || true
       fi
     fi
   fi
 
   # start MON
   if [[ "$CEPH_DAEMON" == demo ]]; then
-    if [[ ! "${CEPH_VERSION}" =~ ^(luminous|mimic)$ ]]; then
+    if echo -n "${CEPH_VERSION}" | grep -qvE '^(luminous|mimic)$'; then
       if ! grep -qE "mon warn on pool no redundancy = false" /etc/ceph/"${CLUSTER}".conf; then
           echo "mon warn on pool no redundancy = false" >> /etc/ceph/"${CLUSTER}".conf
       fi
@@ -191,20 +191,20 @@ function start_mon {
           echo "auth allow insecure global id reclaim = false" >> /etc/ceph/"${CLUSTER}".conf
       fi
     fi
-    /usr/bin/ceph-mon "${DAEMON_OPTS[@]}" -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
+    /usr/bin/ceph-mon ${DAEMON_OPTS} -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
 
     if [ -n "$NEW_USER_KEYRING" ]; then
-      echo "$NEW_USER_KEYRING" | ceph "${CLI_OPTS[@]}" auth import -i -
+      echo "$NEW_USER_KEYRING" | ceph ${CLI_OPTS} auth import -i -
     fi
   else
     # enable cluster/audit/mon logs on the same stream
     # Mind the extra space after 'debug'
     # DO NOT TOUCH IT, IT MUST BE PRESENT
-    DAEMON_OPTS+=("--default-mon-cluster-log-to-stderr=true" "--default-log-stderr-prefix=debug ")
-    if [[ ! "${CEPH_VERSION}" =~ ^(luminous|mimic)$ ]]; then
-      DAEMON_OPTS+=("--default-mon-cluster-log-to-file=false")
+    DAEMON_OPTS="${DAEMON_OPTS} --default-mon-cluster-log-to-stderr=true --default-log-stderr-prefix=debug "
+    if echo -n "${CEPH_VERSION}" | grep -qvE '^(luminous|mimic)$'; then
+      DAEMON_OPTS="${DAEMON_OPTS} --default-mon-cluster-log-to-file=false"
     fi
     log "SUCCESS"
-    exec /usr/bin/ceph-mon "${DAEMON_OPTS[@]}" -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
+    _exec /usr/bin/ceph-mon ${DAEMON_OPTS} -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
   fi
 }

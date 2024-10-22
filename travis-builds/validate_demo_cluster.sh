@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -xe
 
 
@@ -18,7 +18,7 @@ function wait_for_daemon () {
       return 0
     fi
     sleep 1
-    (( timeout=timeout-1 ))
+    timeout=$((${timeout}-1))
   done
   $DOCKER_COMMAND -s > /dev/stderr
   $DOCKER_COMMAND health detail > /dev/stderr

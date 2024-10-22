@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 source "$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/common.sh"

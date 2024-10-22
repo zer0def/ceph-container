@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-unset "DAEMON_OPTS[${#DAEMON_OPTS[@]}-1]" # remove the last element of the array
+DAEMON_OPTS="${DAEMON_OPTS% *}"  # remove the last element of the array
 : "${CLUSTER:=ceph}"
 : "${MON_NAME:=${HOSTNAME}}"
 : "${RGW_NAME:=${HOSTNAME}}"
@@ -10,7 +10,7 @@ unset "DAEMON_OPTS[${#DAEMON_OPTS[@]}-1]" # remove the last element of the array
 : "${MDS_NAME:=${HOSTNAME}}"
 : "${MON_DATA_DIR:=/var/lib/ceph/mon/${CLUSTER}-${MON_NAME}}"
 : "${CEPH_CLUSTER_NETWORK:=${CEPH_PUBLIC_NETWORK}}"
-DAEMON_OPTS=(--cluster "${CLUSTER}" --setuser ceph --setgroup ceph --default-log-to-stderr=true --err-to-stderr=true --default-log-to-file=false)
+DAEMON_OPTS="--cluster ${CLUSTER} --setuser ceph --setgroup ceph --default-log-to-stderr=true --err-to-stderr=true --default-log-to-file=false"
 ADMIN_KEYRING=/etc/ceph/${CLUSTER}.client.admin.keyring
 MON_KEYRING=/etc/ceph/${CLUSTER}.mon.keyring
 RGW_KEYRING=/var/lib/ceph/radosgw/${CLUSTER}-rgw.${RGW_NAME}/keyring
@@ -84,12 +84,12 @@ ENDHERE
   if [ ! -e "$ADMIN_KEYRING" ]; then
     if [ -z "$ADMIN_SECRET" ]; then
       # Automatically generate administrator key
-      CLI+=(--gen-key)
+      CLI="${CLI} --gen-key"
     else
       # Generate custom provided administrator key
-      CLI+=("--add-key=$ADMIN_SECRET")
+      CLI="${CLI} --add-key=$ADMIN_SECRET"
     fi
-    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin "${CLI[@]}" --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin ${CLI}" --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
   fi
 
   if [ ! -e "$MON_KEYRING" ]; then
@@ -98,7 +98,7 @@ ENDHERE
   fi
 
   # Apply proper permissions to the keys
-  chown "${CHOWN_OPT[@]}" ceph. "$MON_KEYRING" "$ADMIN_KEYRING"
+  chown ${CHOWN_OPT} ceph. "$MON_KEYRING" "$ADMIN_KEYRING"
 
   if [ ! -e "$MONMAP" ]; then
     if [ -e /etc/ceph/monmap ]; then
@@ -108,7 +108,7 @@ ENDHERE
       # Generate initial monitor map
       monmaptool --create --add "${MON_NAME}" "${MON_IP}:${MON_PORT}" --fsid "${fsid}" "$MONMAP"
     fi
-    chown "${CHOWN_OPT[@]}" ceph. "$MONMAP"
+    chown ${CHOWN_OPT} ceph. "$MONMAP"
   fi
 }
 
@@ -174,10 +174,10 @@ function start_mon {
   fi
 
   # start MON
-    /usr/bin/ceph-mon "${DAEMON_OPTS[@]}" -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
+    /usr/bin/ceph-mon ${DAEMON_OPTS} -i "${MON_NAME}" --mon-data "$MON_DATA_DIR" --public-addr "${MON_IP}"
 
     if [ -n "$NEW_USER_KEYRING" ]; then
-      echo "$NEW_USER_KEYRING" | ceph "${CLI_OPTS[@]}" auth import -i -
+      echo "$NEW_USER_KEYRING" | ceph ${CLI_OPTS} auth import -i -
     fi
 }
 
@@ -200,20 +200,19 @@ function bootstrap_mon {
 #######
 function parse_size {
   # Taken from https://stackoverflow.com/questions/17615881/simplest-method-to-convert-file-size-with-suffix-to-bytes
-  local SUFFIXES=('' K M G T P E Z Y)
   local MULTIPLIER=1
 
   shopt -s nocasematch
 
-  for SUFFIX in "${SUFFIXES[@]}"; do
+  for SUFFIX in '' K M G T P E Z Y; do
     local REGEX="^([0-9]+)(${SUFFIX}i?B?)?\$"
 
-    if [[ $1 =~ $REGEX ]]; then
-      echo $((BASH_REMATCH[1] * MULTIPLIER))
+    if echo -n "${1}" | grep -qE "${REGEX}"; then
+      echo $(($(echo -n "${1}" | grep -oE '^[0-9]+') * ${MULTIPLIER}))
       return 0
     fi
 
-    ((MULTIPLIER *= 1024))
+    MULTIPLIER=$((${MULTIPLIER}*1024))
   done
 
   echo "$0: invalid size \`$1'" >&2
@@ -242,7 +241,7 @@ function bootstrap_osd {
   : "${OSD_COUNT:=1}"
 
   for i in $(seq 1 1 "$OSD_COUNT"); do
-    (( OSD_ID="$i"-1 )) || true
+    OSD_ID=$((${i}-1))||:
     OSD_PATH="/var/lib/ceph/osd/${CLUSTER}-${OSD_ID}"
 
     if [ ! -e "$OSD_PATH"/keyring ]; then
@@ -266,7 +265,7 @@ ENDHERE
         ceph-volume lvm prepare --data "$OSD_DEVICE"
       else
         # we go for a 'manual' bootstrap
-        ceph "${CLI_OPTS[@]}" auth get-or-create osd."$OSD_ID" mon 'allow profile osd' osd 'allow *' mgr 'allow profile osd' -o "$OSD_PATH"/keyring
+        ceph ${CLI_OPTS} auth get-or-create osd."$OSD_ID" mon 'allow profile osd' osd 'allow *' mgr 'allow profile osd' -o "$OSD_PATH"/keyring
         ceph-osd --conf /etc/ceph/"${CLUSTER}".conf --osd-data "$OSD_PATH" --mkfs -i "$OSD_ID"
       fi
     fi
@@ -279,7 +278,7 @@ ENDHERE
 
     # start OSD
     chown --verbose -R ceph. "$OSD_PATH"
-    ceph-osd "${DAEMON_OPTS[@]}" -i "$OSD_ID"
+    ceph-osd ${DAEMON_OPTS} -i "$OSD_ID"
   done
 }
 
@@ -289,18 +288,18 @@ ENDHERE
 function bootstrap_mds {
   if [ ! -e "$MDS_PATH"/keyring ]; then
     # create ceph filesystem
-    ceph "${CLI_OPTS[@]}" osd pool create cephfs_data 8
-    ceph "${CLI_OPTS[@]}" osd pool create cephfs_metadata 8
-    ceph "${CLI_OPTS[@]}" fs new cephfs cephfs_metadata cephfs_data
+    ceph ${CLI_OPTS} osd pool create cephfs_data 8
+    ceph ${CLI_OPTS} osd pool create cephfs_metadata 8
+    ceph ${CLI_OPTS} fs new cephfs cephfs_metadata cephfs_data
 
     # bootstrap MDS
     mkdir -p "$MDS_PATH"
-    ceph "${CLI_OPTS[@]}" auth get-or-create mds."$MDS_NAME" mds 'allow *' osd 'allow *' mon 'profile mds' mgr 'profile mds' -o "$MDS_PATH"/keyring
+    ceph ${CLI_OPTS} auth get-or-create mds."$MDS_NAME" mds 'allow *' osd 'allow *' mon 'profile mds' mgr 'profile mds' -o "$MDS_PATH"/keyring
     chown --verbose -R ceph. "$MDS_PATH"
   fi
 
   # start MDS
-  ceph-mds "${DAEMON_OPTS[@]}" -i "$MDS_NAME"
+  ceph-mds ${DAEMON_OPTS} -i "$MDS_NAME"
 }
 
 
@@ -323,7 +322,7 @@ function bootstrap_rgw {
   if [ ! -e "$RGW_PATH"/keyring ]; then
     # bootstrap RGW
     mkdir -p "$RGW_PATH" /var/log/ceph
-    ceph "${CLI_OPTS[@]}" auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
+    ceph ${CLI_OPTS} auth get-or-create client.rgw."${RGW_NAME}" osd 'allow rwx' mon 'allow rw' -o "$RGW_KEYRING"
     chown --verbose -R ceph. "$RGW_PATH"
 
     #configure rgw dns name
@@ -343,7 +342,7 @@ ENDHERE
   fi
 
   # start RGW
-  radosgw "${DAEMON_OPTS[@]}" -n client.rgw."${RGW_NAME}" -k "$RGW_KEYRING"
+  radosgw ${DAEMON_OPTS} -n client.rgw."${RGW_NAME}" -k "$RGW_KEYRING"
 }
 
 function bootstrap_demo_user {
@@ -355,9 +354,9 @@ function bootstrap_demo_user {
     mkdir -p "$(dirname $CEPH_DEMO_USER)"
     log "Setting up a demo user..."
     if [ -n "$CEPH_DEMO_UID" ] && [ -n "$CEPH_DEMO_ACCESS_KEY" ] && [ -n "$CEPH_DEMO_SECRET_KEY" ]; then
-      radosgw-admin "${CLI_OPTS[@]}" user create --uid="$CEPH_DEMO_UID" --display-name="Ceph demo user" --access-key="$CEPH_DEMO_ACCESS_KEY" --secret-key="$CEPH_DEMO_SECRET_KEY"
+      radosgw-admin ${CLI_OPTS} user create --uid="$CEPH_DEMO_UID" --display-name="Ceph demo user" --access-key="$CEPH_DEMO_ACCESS_KEY" --secret-key="$CEPH_DEMO_SECRET_KEY"
     else
-      radosgw-admin "${CLI_OPTS[@]}" user create --uid="$CEPH_DEMO_UID" --display-name="Ceph demo user" > "/opt/ceph-container/tmp/${CEPH_DEMO_UID}_user_details"
+      radosgw-admin ${CLI_OPTS} user create --uid="$CEPH_DEMO_UID" --display-name="Ceph demo user" > "/opt/ceph-container/tmp/${CEPH_DEMO_UID}_user_details"
       # Until mimic is supported let's link the file to its original place not to break cn.
       # When mimic will be EOL, cn will only have containers having the fil in the /opt directory and so this symlink could be removed
       ln -sf /opt/ceph-container/tmp/"${CEPH_DEMO_UID}_user_details" /
@@ -369,7 +368,7 @@ function bootstrap_demo_user {
     echo "Access key: $CEPH_DEMO_ACCESS_KEY" > "$CEPH_DEMO_USER"
     echo "Secret key: $CEPH_DEMO_SECRET_KEY" >> "$CEPH_DEMO_USER"
 
-    radosgw-admin "${CLI_OPTS[@]}" caps add --caps="buckets=*;users=*;usage=*;metadata=*" --uid="$CEPH_DEMO_UID"
+    radosgw-admin ${CLI_OPTS} caps add --caps="buckets=*;users=*;usage=*;metadata=*" --uid="$CEPH_DEMO_UID"
 
     # Use rgw port
     sed -i "s/host_base = localhost/host_base = ${RGW_NAME}:${RGW_FRONTEND_PORT}/" /root/.s3cfg
@@ -379,7 +378,7 @@ function bootstrap_demo_user {
       log "Creating bucket..."
 
       # Trying to create a s3cmd within 30 seconds
-      timeout 30 bash -c "until s3cmd mb s3://$CEPH_DEMO_BUCKET; do sleep .1; done"
+      timeout 30 sh -c "until s3cmd mb s3://$CEPH_DEMO_BUCKET; do sleep .1; done"
     fi
   fi
 }
@@ -438,7 +437,7 @@ ENDHERE
 
   # start ganesha
   mkdir -p /var/run/ganesha
-  ganesha.nfsd "${GANESHA_OPTIONS[@]}" -L STDOUT "${GANESHA_EPOCH}"
+  ganesha.nfsd ${GANESHA_OPTIONS} -L STDOUT "${GANESHA_EPOCH}"
 }
 
 
@@ -446,9 +445,9 @@ ENDHERE
 # API #
 #######
 function bootstrap_rest_api {
-  ceph "${CLI_OPTS[@]}" mgr module enable restful
-  ceph "${CLI_OPTS[@]}" restful create-self-signed-cert
-  ceph "${CLI_OPTS[@]}" restful create-key demo
+  ceph ${CLI_OPTS} mgr module enable restful
+  ceph ${CLI_OPTS} restful create-self-signed-cert
+  ceph ${CLI_OPTS} restful create-key demo
 }
 
 
@@ -457,7 +456,7 @@ function bootstrap_rest_api {
 ##############
 function bootstrap_rbd_mirror {
   # start rbd-mirror
-  rbd-mirror "${DAEMON_OPTS[@]}"
+  rbd-mirror ${DAEMON_OPTS}
 }
 
 
@@ -466,11 +465,11 @@ function bootstrap_rbd_mirror {
 #######
 function bootstrap_mgr {
   mkdir -p "$MGR_PATH"
-  ceph "${CLI_OPTS[@]}" auth get-or-create mgr."$MGR_NAME" mon 'allow profile mgr' mds 'allow *' osd 'allow *' -o "$MGR_PATH"/keyring
+  ceph ${CLI_OPTS} auth get-or-create mgr."$MGR_NAME" mon 'allow profile mgr' mds 'allow *' osd 'allow *' -o "$MGR_PATH"/keyring
   chown --verbose -R ceph. "$MGR_PATH"
 
   # start ceph-mgr
-  ceph-mgr "${DAEMON_OPTS[@]}" -i "$MGR_NAME"
+  ceph-mgr ${DAEMON_OPTS} -i "$MGR_NAME"
 }
 
 
@@ -509,7 +508,7 @@ function bootstrap_sree {
 function bootstrap_crash {
   CRASH_NAME="client.crash"
   mkdir -p /var/lib/ceph/crash/posted
-  ceph "${CLI_OPTS[@]}" auth get-or-create "${CRASH_NAME}" mon 'profile crash' mgr 'profile crash' -o /etc/ceph/"${CLUSTER}"."${CRASH_NAME}".keyring
+  ceph ${CLI_OPTS} auth get-or-create "${CRASH_NAME}" mon 'profile crash' mgr 'profile crash' -o /etc/ceph/"${CLUSTER}"."${CRASH_NAME}".keyring
   chown --verbose -R ceph. /etc/ceph/"${CLUSTER}"."${CRASH_NAME}".keyring /var/lib/ceph/crash
 
   # start ceph-crash
@@ -534,11 +533,8 @@ function build_bootstrap {
     # change commas to space
     comma_to_space=${DEMO_DAEMONS//,/ }
 
-    # transform to an array
-    IFS=" " read -r -a array <<< "$comma_to_space"
-
     # sort and remove potential duplicate
-    daemons_list=$(echo "${array[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+    daemons_list=$(echo ${comma_to_space} | tr '[:space:]' '\n' | sort -u | tr '\n' ' ')
   fi
 
   for daemon in $daemons_list; do
@@ -613,4 +609,4 @@ build_bootstrap
 touch /var/lib/ceph/I_AM_A_DEMO /etc/ceph/I_AM_A_DEMO
 
 log "SUCCESS"
-exec ceph "${CLI_OPTS[@]}" -w
+exec ceph ${CLI_OPTS} -w

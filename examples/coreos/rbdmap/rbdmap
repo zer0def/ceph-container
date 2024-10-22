@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # rbdmap Ceph RBD Mapping
 # This version supports the keyring file rather than just the ID.
@@ -38,8 +38,9 @@ do_map() {
       mons=`egrep 'mon_addr' $CONF | cut -f2 -d'=' | sed 's/ //g' | tr '\n' ',' | sed 's/.$//'`
       rbddev=`echo $DEV | tr '/' ' '`
 
-      IFS=, read -r -a params <<< "$PARAMS"
-      for opt in "${params[@]}"; do
+      #IFS=, read -r -a params <<< "$PARAMS"
+      #for opt in "${params[@]}"; do
+      for opt in ${PARAMS}; do
         IFS="=" read -r key val <<< "$opt"
         case $key in
               id) name=$val ;;

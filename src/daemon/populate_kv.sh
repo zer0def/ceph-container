@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function kv {
@@ -7,7 +7,7 @@ function kv {
   local value
   read -r key value <<< "$*"
   log "Adding key ${key} with value ${value} to KV store."
-  etcdctl "${ETCDCTL_OPTS[@]}" "${KV_TLS[@]}" set "${CLUSTER_PATH}""${key}" "${value}" || log "Value is already set"
+  etcdctl ${ETCDCTL_OPTS} ${KV_TLS} set "${CLUSTER_PATH}""${key}" "${value}" || log "Value is already set"
 }
 
 function populate_kv {
@@ -17,7 +17,7 @@ function populate_kv {
   fi
   case "$KV_TYPE" in
     etcd)
-      etcdctl "${ETCDCTL_OPTS[@]}" "${KV_TLS[@]}" mkdir "${CLUSTER_PATH}/client_host" || log "client_host already exists"
+      etcdctl ${ETCDCTL_OPTS} ${KV_TLS} mkdir "${CLUSTER_PATH}/client_host" || log "client_host already exists"
       # if ceph.defaults found in /etc/ceph/ use that
       if [[ -e "/etc/ceph/ceph.defaults" ]]; then
         local defaults_path="/etc/ceph/ceph.defaults"

@@ -1,0 +1,64 @@
+commit 6eacfe96625e272fdb9094ab8753e70ec163c04d
+Author: Patrick Donnelly <pdonnell@ibm.com>
+Date:   Wed Apr 17 15:52:36 2024 -0400
+
+    pybind/mgr: disable sqlite3/python autocommit
+    
+    SQLite3 and python's binding were both committing transactions at unintended
+    points. Turn it off and stop using executescript.
+    
+    Fixes: https://tracker.ceph.com/issues/65494
+    Signed-off-by: Patrick Donnelly <pdonnell@redhat.com>
+
+diff --git a/src/pybind/mgr/devicehealth/module.py b/src/pybind/mgr/devicehealth/module.py
+index e4356175c6a..e90db88fd16 100644
+--- a/src/pybind/mgr/devicehealth/module.py
++++ b/src/pybind/mgr/devicehealth/module.py
+@@ -320,7 +328,6 @@ CREATE TABLE DeviceHealthMetrics (
+ 
+         done = False
+         with ioctx, self._db_lock, self.db:
+-            self.db.execute('BEGIN;')
+             count = 0
+             for obj in ioctx.list_objects():
+                 try:
+@@ -512,7 +521,6 @@ CREATE TABLE DeviceHealthMetrics (
+         """
+ 
+         with self._db_lock, self.db:
+-            self.db.execute('BEGIN;')
+             self._create_device(devid)
+             self.db.execute(SQL, (devid, json.dumps(data)))
+             self._prune_device_metrics()
+@@ -566,7 +576,6 @@ CREATE TABLE DeviceHealthMetrics (
+         self.log.debug(f"_get_device_metrics: {devid} {sample} {min_sample}")
+ 
+         with self._db_lock, self.db:
+-            self.db.execute('BEGIN;')
+             if isample:
+                 cursor = self.db.execute(SQL_EXACT, (devid, isample))
+             else:
+diff --git a/src/pybind/mgr/mgr_module.py b/src/pybind/mgr/mgr_module.py
+index 5ea2435774c..60c9ce06ca9 100644
+--- a/src/pybind/mgr/mgr_module.py
++++ b/src/pybind/mgr/mgr_module.py
+@@ -1251,7 +1257,6 @@ class MgrModule(ceph_module.BaseMgrModule, MgrModuleLoggingMixin):
+ 
+         kv = self.get_module_option('sqlite3_killpoint')
+         with db:
+-            db.execute('BEGIN;')
+             self.create_skeleton_schema(db)
+             if kv == 1:
+                 os._exit(120)
+@@ -1286,10 +1293,7 @@ class MgrModule(ceph_module.BaseMgrModule, MgrModuleLoggingMixin):
+             self.create_mgr_pool()
+         uri = f"file:///{self.MGR_POOL_NAME}:{self.module_name}/main.db?vfs=ceph";
+         self.log.debug(f"using uri {uri}")
+-        try:
+-            db = sqlite3.connect(uri, check_same_thread=False, uri=True, autocommit=False) # type: ignore[call-arg]
+-        except TypeError:
+-            db = sqlite3.connect(uri, check_same_thread=False, uri=True, isolation_level=None)
++        db = sqlite3.connect(uri, check_same_thread=False, uri=True)
+         # if libcephsqlite reconnects, update the addrv for blocklist
+         with db:
+             cur = db.execute('SELECT json_extract(ceph_status(), "$.addr");')

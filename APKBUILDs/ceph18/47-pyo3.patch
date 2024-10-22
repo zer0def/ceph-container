@@ -1,0 +1,112 @@
+From 9f2f08f4b664848836a2b3c223fe0161136952f7 Mon Sep 17 00:00:00 2001
+From: Ernesto Puerta <epuertat@redhat.com>
+Date: Fri, 7 Jun 2024 11:41:26 +0200
+Subject: [PATCH 1/2] mgr: fix pyO3 import issues
+
+The latest versions of pyO3 (a Python binding for Rust) explicitly added
+a check to detect multiple imports. In subinterpreter environments, this
+leads to an ImportError: "PyO3 modules may only be initialized once per
+interpreter process" (it has been recenlty replaced with a more
+specific: "PyO3 modules may only be initialized once per interpreter
+process".
+
+This is only a workaround while the root cause is fixed (see
+https://github.com/PyO3/pyo3/pull/4162).
+
+Fixes: https://tracker.ceph.com/issues/64213
+Signed-off-by: Ernesto Puerta <epuertat@redhat.com>
+---
+ .../mgr/dashboard/services/access_control.py  | 46 ++++++++-----------
+ 2 files changed, 21 insertions(+), 30 deletions(-)
+
+diff --git a/src/pybind/mgr/dashboard/services/access_control.py b/src/pybind/mgr/dashboard/services/access_control.py
+index 0cbe49bb160..9bd3c58b319 100644
+--- a/src/pybind/mgr/dashboard/services/access_control.py
++++ b/src/pybind/mgr/dashboard/services/access_control.py
+@@ -3,6 +3,7 @@
+ # pylint: disable=too-many-branches, too-many-locals, too-many-statements
+ 
+ import errno
++import hmac
+ import json
+ import logging
+ import re
+@@ -12,7 +13,6 @@ from datetime import datetime, timedelta
+ from string import ascii_lowercase, ascii_uppercase, digits, punctuation
+ from typing import List, Optional, Sequence
+ 
+-import bcrypt
+ from mgr_module import CLICheckNonemptyFileInput, CLIReadCommand, CLIWriteCommand
+ from mgr_util import password_hash
+ 
+@@ -345,7 +345,7 @@ class User(object):
+         :rtype: bool
+         """
+         pass_hash = password_hash(password, salt_password=self.password)
+-        return pass_hash == self.password
++        return hmac.compare_digest(pass_hash, self.password)
+ 
+     def is_pwd_expired(self):
+         if self.pwd_expiration_date:
+@@ -879,27 +879,6 @@ def ac_user_set_password(_, username: str, inbuf: str,
+         return -errno.ENOENT, '', str(ex)
+ 
+ 
+-@CLIWriteCommand('dashboard ac-user-set-password-hash')
+-@CLICheckNonemptyFileInput(desc=DEFAULT_FILE_DESC)
+-def ac_user_set_password_hash(_, username: str, inbuf: str):
+-    '''
+-    Set user password bcrypt hash from -i <file>
+-    '''
+-    hashed_password = inbuf
+-    try:
+-        # make sure the hashed_password is actually a bcrypt hash
+-        bcrypt.checkpw(b'', hashed_password.encode('utf-8'))
+-        user = mgr.ACCESS_CTRL_DB.get_user(username)
+-        user.set_password_hash(hashed_password)
+-
+-        mgr.ACCESS_CTRL_DB.save()
+-        return 0, json.dumps(user.to_dict()), ''
+-    except ValueError:
+-        return -errno.EINVAL, '', 'Invalid password hash'
+-    except UserDoesNotExist as ex:
+-        return -errno.ENOENT, '', str(ex)
+-
+-
+ @CLIWriteCommand('dashboard ac-user-set-info')
+ def ac_user_set_info(_, username: str, name: str, email: str):
+     '''
+diff --git a/src/pybind/mgr/mgr_util.py b/src/pybind/mgr/mgr_util.py
+index 05ec6496682..d98431df186 100644
+--- a/src/pybind/mgr/mgr_util.py
++++ b/src/pybind/mgr/mgr_util.py
+@@ -3,11 +3,12 @@ import os
+ if 'UNITTEST' in os.environ:
+     import tests
+ 
+-import bcrypt
++import base64
+ import cephfs
+ import contextlib
+ import datetime
+ import errno
++import hashlib
+ import socket
+ import time
+ import logging
+@@ -870,10 +871,12 @@ def profile_method(skip_attribute: bool = False) -> Callable[[Callable[..., T]],
+ 
+ 
+ def password_hash(password: Optional[str], salt_password: Optional[str] = None) -> Optional[str]:
++    SCRYPT_SALT_LEN = 29
+     if not password:
+         return None
+     if not salt_password:
+-        salt = bcrypt.gensalt()
++        salt = os.urandom(SCRYPT_SALT_LEN)
+     else:
+-        salt = salt_password.encode('utf8')
+-    return bcrypt.hashpw(password.encode('utf8'), salt).decode('utf8')
++        salt = base64.b64decode(salt_password)[:SCRYPT_SALT_LEN]
++    hash = hashlib.scrypt(password.encode('utf8'), salt=salt, n=2**14, r=8, p=1)
++    return base64.b64encode(salt + hash).decode('utf8')

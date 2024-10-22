@@ -16,7 +16,7 @@ RUN \
     #   download and install packages from web, cleaning any files as you go.
     __DOCKERFILE_INSTALL__ && \
     # Clean container, starting with record of current size (strip / from end)
-    INITIAL_SIZE="$(bash -c 'sz="$(du -sm --exclude=/proc /)" ; echo "${sz%*/}"')" && \
+    INITIAL_SIZE="$(sh -c 'sz="$(du -smx /)" ; echo "${sz%*/}"')" && \
     #
     #
     # Perform any final cleanup actions like package manager cleaning, etc.
@@ -28,7 +28,7 @@ RUN \
     #
     #
     # Report size savings (strip / from end)
-    FINAL_SIZE="$(bash -c 'sz="$(du -sm --exclude=/proc /)" ; echo "${sz%*/}"')" && \
+    FINAL_SIZE="$(sh -c 'sz="$(du -smx /)" ; echo "${sz%*/}"')" && \
     REMOVED_SIZE=$((INITIAL_SIZE - FINAL_SIZE)) && \
     echo "Cleaning process removed ${REMOVED_SIZE}MB" && \
     echo "Dropped container size from ${INITIAL_SIZE}MB to ${FINAL_SIZE}MB" && \
@@ -50,9 +50,9 @@ ADD ceph.defaults /opt/ceph-container/etc/
 # ADD *.sh ceph.defaults check_zombie_mons.py ./osd_scenarios/* entrypoint.sh.in disabled_scenario /
 
 # Modify the entrypoint
-RUN bash "/opt/ceph-container/bin/generate_entrypoint.sh" && \
+RUN sh "/opt/ceph-container/bin/generate_entrypoint.sh" && \
   rm -f /opt/ceph-container/bin/generate_entrypoint.sh && \
-  bash -n /opt/ceph-container/bin/*.sh
+  sh -n /opt/ceph-container/bin/*.sh
 
 # Execute the entrypoint
 WORKDIR /

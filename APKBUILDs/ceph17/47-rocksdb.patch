@@ -1,0 +1,464 @@
+diff --git a/src/rocksdb/CMakeLists.txt b/src/rocksdb/CMakeLists.txt
+index fdc894734..a85771d9f 100644
+--- a/src/rocksdb/CMakeLists.txt
++++ b/src/rocksdb/CMakeLists.txt
+@@ -253,32 +253,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|AARCH64")
+ endif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|AARCH64")
+ 
+ option(PORTABLE "build a portable binary" OFF)
+-option(FORCE_SSE42 "force building with SSE4.2, even when PORTABLE=ON" OFF)
+-option(FORCE_AVX "force building with AVX, even when PORTABLE=ON" OFF)
+-option(FORCE_AVX2 "force building with AVX2, even when PORTABLE=ON" OFF)
+-if(PORTABLE)
+-  # MSVC does not need a separate compiler flag to enable SSE4.2; if nmmintrin.h
+-  # is available, it is available by default.
+-  if(FORCE_SSE42 AND NOT MSVC)
+-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -mpclmul")
+-  endif()
+-  if(MSVC)
+-    if(FORCE_AVX)
+-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
+-    endif()
+-    # MSVC automatically enables BMI / lzcnt with AVX2.
+-    if(FORCE_AVX2)
+-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+-    endif()
+-  else()
+-    if(FORCE_AVX)
+-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+-    endif()
+-    if(FORCE_AVX2)
+-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mbmi -mlzcnt")
+-    endif()
+-  endif()
+-else()
++if(NOT PORTABLE)
+   if(MSVC)
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
+   else()
+@@ -289,29 +264,6 @@ else()
+ endif()
+ 
+ include(CheckCXXSourceCompiles)
+-if(NOT MSVC)
+-  set(CMAKE_REQUIRED_FLAGS "-msse4.2 -mpclmul")
+-endif()
+-
+-CHECK_CXX_SOURCE_COMPILES("
+-#include <cstdint>
+-#include <nmmintrin.h>
+-#include <wmmintrin.h>
+-int main() {
+-  volatile uint32_t x = _mm_crc32_u32(0, 0);
+-  const auto a = _mm_set_epi64x(0, 0);
+-  const auto b = _mm_set_epi64x(0, 0);
+-  const auto c = _mm_clmulepi64_si128(a, b, 0x00);
+-  auto d = _mm_cvtsi128_si64(c);
+-}
+-" HAVE_SSE42)
+-unset(CMAKE_REQUIRED_FLAGS)
+-if(HAVE_SSE42)
+-  add_definitions(-DHAVE_SSE42)
+-  add_definitions(-DHAVE_PCLMUL)
+-elseif(FORCE_SSE42)
+-  message(FATAL_ERROR "FORCE_SSE42=ON but unable to compile with SSE4.2 enabled")
+-endif()
+ 
+ CHECK_CXX_SOURCE_COMPILES("
+ #if defined(_MSC_VER) && !defined(__thread)
+@@ -831,12 +783,6 @@ set(SOURCES
+         utilities/write_batch_with_index/write_batch_with_index_internal.cc
+         $<TARGET_OBJECTS:build_version>)
+ 
+-if(HAVE_SSE42 AND NOT MSVC)
+-  set_source_files_properties(
+-    util/crc32c.cc
+-    PROPERTIES COMPILE_FLAGS "-msse4.2 -mpclmul")
+-endif()
+-
+ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
+   list(APPEND SOURCES
+     util/crc32c_ppc.c
+diff --git a/src/rocksdb/TARGETS b/src/rocksdb/TARGETS
+index ae24cbab0..0cd6cb0fc 100644
+--- a/src/rocksdb/TARGETS
++++ b/src/rocksdb/TARGETS
+@@ -49,7 +49,6 @@ ROCKSDB_OS_PREPROCESSOR_FLAGS = [
+             "-DROCKSDB_RANGESYNC_PRESENT",
+             "-DROCKSDB_SCHED_GETCPU_PRESENT",
+             "-DROCKSDB_IOURING_PRESENT",
+-            "-DHAVE_SSE42",
+             "-DLIBURING",
+             "-DNUMA",
+             "-DROCKSDB_PLATFORM_POSIX",
+@@ -92,12 +91,6 @@ ROCKSDB_PREPROCESSOR_FLAGS = [
+     "-I" + REPO_PATH,
+ ]
+ 
+-ROCKSDB_ARCH_PREPROCESSOR_FLAGS = {
+-    "x86_64": [
+-        "-DHAVE_PCLMUL",
+-    ],
+-}
+-
+ build_mode = read_config("fbcode", "build_mode")
+ 
+ is_opt_mode = build_mode.startswith("opt")
+@@ -405,7 +398,6 @@ cpp_library(
+         "utilities/write_batch_with_index/write_batch_with_index_internal.cc",
+     ],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -695,7 +687,6 @@ cpp_library(
+         "utilities/write_batch_with_index/write_batch_with_index_internal.cc",
+     ],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -718,7 +709,6 @@ cpp_library(
+         "utilities/cassandra/test_utils.cc",
+     ],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -739,7 +729,6 @@ cpp_library(
+         "tools/trace_analyzer_tool.cc",
+     ],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -766,7 +755,6 @@ cpp_library(
+         "tools/trace_analyzer_tool.cc",
+     ],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -778,7 +766,6 @@ cpp_library(
+ cpp_binary(
+     name = "c_test_bin",
+     srcs = ["db/c_test.c"],
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
+@@ -798,7 +785,6 @@ cpp_library(
+     name = "env_basic_test_lib",
+     srcs = ["env/env_basic_test.cc"],
+     auto_headers = AutoHeaders.RECURSIVE_GLOB,
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -2051,7 +2037,6 @@ ROCKS_TESTS = [
+     cpp_unittest(
+         name = test_name,
+         srcs = [test_cc],
+-        arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+         os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+         compiler_flags = ROCKSDB_COMPILER_FLAGS + extra_compiler_flags,
+         preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
+diff --git a/src/rocksdb/buckifier/targets_cfg.py b/src/rocksdb/buckifier/targets_cfg.py
+index 0c20ef095..44daff2da 100644
+--- a/src/rocksdb/buckifier/targets_cfg.py
++++ b/src/rocksdb/buckifier/targets_cfg.py
+@@ -56,7 +56,6 @@ ROCKSDB_OS_PREPROCESSOR_FLAGS = [
+             "-DROCKSDB_RANGESYNC_PRESENT",
+             "-DROCKSDB_SCHED_GETCPU_PRESENT",
+             "-DROCKSDB_IOURING_PRESENT",
+-            "-DHAVE_SSE42",
+             "-DLIBURING",
+             "-DNUMA",
+             "-DROCKSDB_PLATFORM_POSIX",
+@@ -99,12 +98,6 @@ ROCKSDB_PREPROCESSOR_FLAGS = [
+     "-I" + REPO_PATH,
+ ]
+ 
+-ROCKSDB_ARCH_PREPROCESSOR_FLAGS = {
+-    "x86_64": [
+-        "-DHAVE_PCLMUL",
+-    ],
+-}
+-
+ build_mode = read_config("fbcode", "build_mode")
+ 
+ is_opt_mode = build_mode.startswith("opt")
+@@ -139,7 +132,6 @@ cpp_library(
+     name = "{name}",
+     srcs = [{srcs}],
+     {headers_attr_prefix}headers = {headers},
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -155,7 +147,6 @@ cpp_library(
+     name = "{name}",
+     srcs = [{srcs}],
+     {headers_attr_prefix}headers = {headers},
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     os_deps = ROCKSDB_OS_DEPS,
+     os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+@@ -169,7 +160,6 @@ binary_template = """
+ cpp_binary(
+     name = "{name}",
+     srcs = [{srcs}],
+-    arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+     compiler_flags = ROCKSDB_COMPILER_FLAGS,
+     preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
+     deps = [{deps}],
+@@ -198,7 +188,6 @@ ROCKS_TESTS = [
+     cpp_unittest(
+         name = test_name,
+         srcs = [test_cc],
+-        arch_preprocessor_flags = ROCKSDB_ARCH_PREPROCESSOR_FLAGS,
+         os_preprocessor_flags = ROCKSDB_OS_PREPROCESSOR_FLAGS,
+         compiler_flags = ROCKSDB_COMPILER_FLAGS + extra_compiler_flags,
+         preprocessor_flags = ROCKSDB_PREPROCESSOR_FLAGS,
+diff --git a/src/rocksdb/build_tools/build_detect_platform b/src/rocksdb/build_tools/build_detect_platform
+index 805b7eab5..f54eaba00 100755
+--- a/src/rocksdb/build_tools/build_detect_platform
++++ b/src/rocksdb/build_tools/build_detect_platform
+@@ -636,20 +636,11 @@ if test "0$PORTABLE" -eq 0; then
+     COMMON_FLAGS="$COMMON_FLAGS"
+   elif [ "$TARGET_OS" == "IOS" ]; then
+     COMMON_FLAGS="$COMMON_FLAGS"
+-  elif [ "$TARGET_OS" == "AIX" ] || [ "$TARGET_OS" == "SunOS" ]; then
+-    # TODO: Not sure why we don't use -march=native on these OSes
+-    if test "$USE_SSE"; then
+-      TRY_SSE_ETC="1"
+-    fi
+   else
+     COMMON_FLAGS="$COMMON_FLAGS -march=native "
+   fi
+ else
+   # PORTABLE=1
+-  if test "$USE_SSE"; then
+-    TRY_SSE_ETC="1"
+-  fi
+-
+   if [[ "${PLATFORM}" == "OS_MACOSX" ]]; then
+     # For portability compile for macOS 10.12 (2016) or newer
+     COMMON_FLAGS="$COMMON_FLAGS -mmacosx-version-min=10.12"
+@@ -658,87 +649,6 @@ else
+   fi
+ fi
+ 
+-if test "$TRY_SSE_ETC"; then
+-  # The USE_SSE flag now means "attempt to compile with widely-available
+-  # Intel architecture extensions utilized by specific optimizations in the
+-  # source code." It's a qualifier on PORTABLE=1 that means "mostly portable."
+-  # It doesn't even really check that your current CPU is compatible.
+-  #
+-  # SSE4.2 available since nehalem, ca. 2008-2010
+-  # Includes POPCNT for BitsSetToOne, BitParity
+-  TRY_SSE42="-msse4.2"
+-  # PCLMUL available since westmere, ca. 2010-2011
+-  TRY_PCLMUL="-mpclmul"
+-  # AVX2 available since haswell, ca. 2013-2015
+-  TRY_AVX2="-mavx2"
+-  # BMI available since haswell, ca. 2013-2015
+-  # Primarily for TZCNT for CountTrailingZeroBits
+-  TRY_BMI="-mbmi"
+-  # LZCNT available since haswell, ca. 2013-2015
+-  # For FloorLog2
+-  TRY_LZCNT="-mlzcnt"
+-fi
+-
+-$CXX $PLATFORM_CXXFLAGS $COMMON_FLAGS $TRY_SSE42 -x c++ - -o /dev/null 2>/dev/null <<EOF
+-  #include <cstdint>
+-  #include <nmmintrin.h>
+-  int main() {
+-    volatile uint32_t x = _mm_crc32_u32(0, 0);
+-    (void)x;
+-  }
+-EOF
+-if [ "$?" = 0 ]; then
+-  COMMON_FLAGS="$COMMON_FLAGS $TRY_SSE42 -DHAVE_SSE42"
+-elif test "$USE_SSE"; then
+-  echo "warning: USE_SSE specified but compiler could not use SSE intrinsics, disabling" >&2
+-fi
+-
+-$CXX $PLATFORM_CXXFLAGS $COMMON_FLAGS $TRY_PCLMUL -x c++ - -o /dev/null 2>/dev/null <<EOF
+-  #include <cstdint>
+-  #include <wmmintrin.h>
+-  int main() {
+-    const auto a = _mm_set_epi64x(0, 0);
+-    const auto b = _mm_set_epi64x(0, 0);
+-    const auto c = _mm_clmulepi64_si128(a, b, 0x00);
+-    auto d = _mm_cvtsi128_si64(c);
+-    (void)d;
+-  }
+-EOF
+-if [ "$?" = 0 ]; then
+-  COMMON_FLAGS="$COMMON_FLAGS $TRY_PCLMUL -DHAVE_PCLMUL"
+-elif test "$USE_SSE"; then
+-  echo "warning: USE_SSE specified but compiler could not use PCLMUL intrinsics, disabling" >&2
+-fi
+-
+-$CXX $PLATFORM_CXXFLAGS $COMMON_FLAGS $TRY_AVX2 -x c++ - -o /dev/null 2>/dev/null <<EOF
+-  #include <cstdint>
+-  #include <immintrin.h>
+-  int main() {
+-    const auto a = _mm256_setr_epi32(0, 1, 2, 3, 4, 7, 6, 5);
+-    const auto b = _mm256_permutevar8x32_epi32(a, a);
+-    (void)b;
+-  }
+-EOF
+-if [ "$?" = 0 ]; then
+-  COMMON_FLAGS="$COMMON_FLAGS $TRY_AVX2 -DHAVE_AVX2"
+-elif test "$USE_SSE"; then
+-  echo "warning: USE_SSE specified but compiler could not use AVX2 intrinsics, disabling" >&2
+-fi
+-
+-$CXX $PLATFORM_CXXFLAGS $COMMON_FLAGS $TRY_BMI -x c++ - -o /dev/null 2>/dev/null <<EOF
+-  #include <cstdint>
+-  #include <immintrin.h>
+-  int main(int argc, char *argv[]) {
+-    (void)argv;
+-    return (int)_tzcnt_u64((uint64_t)argc);
+-  }
+-EOF
+-if [ "$?" = 0 ]; then
+-  COMMON_FLAGS="$COMMON_FLAGS $TRY_BMI -DHAVE_BMI"
+-elif test "$USE_SSE"; then
+-  echo "warning: USE_SSE specified but compiler could not use BMI intrinsics, disabling" >&2
+-fi
+-
+ $CXX $PLATFORM_CXXFLAGS $COMMON_FLAGS $TRY_LZCNT -x c++ - -o /dev/null 2>/dev/null <<EOF
+   #include <cstdint>
+   #include <immintrin.h>
+diff --git a/src/rocksdb/build_tools/fbcode_config.sh b/src/rocksdb/build_tools/fbcode_config.sh
+index 2f56daa08..343bee265 100644
+--- a/src/rocksdb/build_tools/fbcode_config.sh
++++ b/src/rocksdb/build_tools/fbcode_config.sh
+@@ -86,8 +86,6 @@ else
+ fi
+ CFLAGS+=" -DTBB"
+ 
+-test "$USE_SSE" || USE_SSE=1
+-export USE_SSE
+ test "$PORTABLE" || PORTABLE=1
+ export PORTABLE
+ 
+@@ -137,7 +135,7 @@ else
+ fi
+ 
+ CFLAGS+=" $DEPS_INCLUDE"
+-CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DHAVE_SSE42"
++CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL"
+ CXXFLAGS+=" $CFLAGS"
+ 
+ EXEC_LDFLAGS=" $SNAPPY_LIBS $ZLIB_LIBS $BZIP_LIBS $LZ4_LIBS $ZSTD_LIBS $GFLAGS_LIBS $NUMA_LIB $TBB_LIBS"
+diff --git a/src/rocksdb/build_tools/fbcode_config4.8.1.sh b/src/rocksdb/build_tools/fbcode_config4.8.1.sh
+index c5ba8ddf4..28c07ae97 100644
+--- a/src/rocksdb/build_tools/fbcode_config4.8.1.sh
++++ b/src/rocksdb/build_tools/fbcode_config4.8.1.sh
+@@ -53,8 +53,6 @@ LIBUNWIND="$LIBUNWIND_BASE/lib/libunwind.a"
+ TBB_INCLUDE=" -isystem $TBB_BASE/include/"
+ TBB_LIBS="$TBB_BASE/lib/libtbb.a"
+ 
+-test "$USE_SSE" || USE_SSE=1
+-export USE_SSE
+ test "$PORTABLE" || PORTABLE=1
+ export PORTABLE
+ 
+@@ -98,7 +96,7 @@ else
+ fi
+ 
+ CFLAGS+=" $DEPS_INCLUDE"
+-CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DHAVE_SSE42"
++CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL"
+ CFLAGS+=" -DSNAPPY -DGFLAGS=google -DZLIB -DBZIP2 -DLZ4 -DZSTD -DNUMA -DTBB"
+ CXXFLAGS+=" $CFLAGS"
+ 
+diff --git a/src/rocksdb/build_tools/fbcode_config_platform007.sh b/src/rocksdb/build_tools/fbcode_config_platform007.sh
+index f7de7fcca..b7a4f1c4a 100644
+--- a/src/rocksdb/build_tools/fbcode_config_platform007.sh
++++ b/src/rocksdb/build_tools/fbcode_config_platform007.sh
+@@ -95,8 +95,6 @@ else
+ fi
+ CFLAGS+=" -DLIBURING"
+ 
+-test "$USE_SSE" || USE_SSE=1
+-export USE_SSE
+ test "$PORTABLE" || PORTABLE=1
+ export PORTABLE
+ 
+@@ -146,7 +144,7 @@ else
+ fi
+ 
+ CFLAGS+=" $DEPS_INCLUDE"
+-CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DHAVE_SSE42 -DROCKSDB_IOURING_PRESENT"
++CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DROCKSDB_IOURING_PRESENT"
+ CXXFLAGS+=" $CFLAGS"
+ 
+ EXEC_LDFLAGS=" $SNAPPY_LIBS $ZLIB_LIBS $BZIP_LIBS $LZ4_LIBS $ZSTD_LIBS $GFLAGS_LIBS $NUMA_LIB $TBB_LIBS $LIBURING_LIBS"
+diff --git a/src/rocksdb/include/rocksdb/rocksdb_namespace.h b/src/rocksdb/include/rocksdb/rocksdb_namespace.h
+--- a/src/rocksdb/include/rocksdb/rocksdb_namespace.h
++++ b/src/rocksdb/include/rocksdb/rocksdb_namespace.h
+@@ -5,6 +5,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #ifndef ROCKSDB_NAMESPACE
+ #define ROCKSDB_NAMESPACE rocksdb
+ #endif
+diff --git a/src/rocksdb/include/rocksdb/utilities/checkpoint.h b/src/rocksdb/include/rocksdb/utilities/checkpoint.h
+--- a/src/rocksdb/include/rocksdb/utilities/checkpoint.h
++++ b/src/rocksdb/include/rocksdb/utilities/checkpoint.h
+@@ -8,6 +8,7 @@
+ #pragma once
+ #ifndef ROCKSDB_LITE
+ 
++#include <cstdint>
+ #include <string>
+ #include <vector>
+ #include "rocksdb/status.h"
+diff --git a/src/rocksdb/table/block_based/data_block_hash_index.h b/src/rocksdb/table/block_based/data_block_hash_index.h
+--- a/src/rocksdb/table/block_based/data_block_hash_index.h
++++ b/src/rocksdb/table/block_based/data_block_hash_index.h
+@@ -5,6 +5,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #include <string>
+ #include <vector>
+ 
+diff --git a/src/rocksdb/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h b/src/rocksdb/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
+index c0a8173596e..69ab574ac75 100644
+--- a/src/rocksdb/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
++++ b/src/rocksdb/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
+@@ -7,6 +7,7 @@
+ #include <cassert>
+ #include <memory>
+ #include <mutex>
++#include <system_error>
+ #include <stdexcept>
+ #include <utility>
+ 
+diff --git a/src/rocksdb/build_tools/fbcode_config_platform009.sh b/src/rocksdb/build_tools/fbcode_config_platform009.sh
+index cf24bd815..715181854 100644
+--- a/src/rocksdb/build_tools/fbcode_config_platform009.sh
++++ b/src/rocksdb/build_tools/fbcode_config_platform009.sh
+@@ -146,7 +146,7 @@ else
+ fi
+ 
+ CFLAGS+=" $DEPS_INCLUDE"
+-CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DHAVE_SSE42 -DROCKSDB_IOURING_PRESENT"
++CFLAGS+=" -DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE -DROCKSDB_RANGESYNC_PRESENT -DROCKSDB_SCHED_GETCPU_PRESENT -DROCKSDB_SUPPORT_THREAD_LOCAL -DROCKSDB_IOURING_PRESENT"
+ CXXFLAGS+=" $CFLAGS"
+ 
+ EXEC_LDFLAGS=" $SNAPPY_LIBS $ZLIB_LIBS $BZIP_LIBS $LZ4_LIBS $ZSTD_LIBS $GFLAGS_LIBS $NUMA_LIB $TBB_LIBS $LIBURING_LIBS"

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -Eeuo pipefail
 # -E option is 'errtrace' and is needed for -e to fail properly from subshell failures
 
@@ -77,12 +77,12 @@ done"  # add 'done' to end of next_versions list so for loop will continue one p
                                        "${PUSH_REPOSITORY}" "${newest_build_number}")"
 
     # Apply tags for the minor versions (and major version)
-    additional_tags=("${version_tag}")
+    additional_tags="${version_tag}"
     minor_number="$(extract_minor_version "${version_tag}")"
     next_minor_number=''
     if [ "${next_version}" == "done" ]; then
       # If the version is the last version, we should apply major tags to this manifest
-      additional_tags+=("$(convert_version_tag_to_major_tag "${version_tag}")")
+      additional_tags="${additional_tags} $(convert_version_tag_to_major_tag "${version_tag}")"
       # leave next minor number as empty
     else
       next_version_tag="$(convert_version_to_version_tag "${next_version}")"
@@ -91,13 +91,13 @@ done"  # add 'done' to end of next_versions list so for loop will continue one p
     if [ -z "${next_minor_number}" ] || [ "${next_minor_number}" -gt "${minor_number}" ]; then
       # If there is not next minor number (i.e., this is the last version) or if the next minor
       # number is higher, apply minor tag to this manifest
-      additional_tags+=("$(convert_version_tag_to_major_minor_tag "${version_tag}")")
+      additional_tags="${additional_tags} $(convert_version_tag_to_major_minor_tag "${version_tag}")"
     fi
 
     if ! full_tag_exists "${manifest_image_tag}" || [ -n "${FORCE_MANIFEST_CREATION:-}" ]; then
       # If the image doesn't exist in the repo, push it
       push_manifest_image "${manifest_image_tag}" \
-        "${x86_latest_server_image_tag}" "${arm_latest_server_image_tag}" "${additional_tags[*]:-}"
+        "${x86_latest_server_image_tag}" "${arm_latest_server_image_tag}" ${additional_tags:-}
     fi
     # Don't push the image if it already exists
 

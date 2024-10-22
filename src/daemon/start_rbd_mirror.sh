@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_rbd_mirror {
@@ -21,12 +21,12 @@ function start_rbd_mirror {
     ceph_health client.bootstrap-rbd-mirror "$RBD_MIRROR_BOOTSTRAP_KEYRING"
 
     # Generate the rbd mirror key
-    ceph "${CLI_OPTS[@]}" --name client.bootstrap-rbd-mirror --keyring "$RBD_MIRROR_BOOTSTRAP_KEYRING" auth get-or-create client.rbd-mirror."${RBD_MIRROR_NAME}" mon 'profile rbd-mirror' osd 'profile rbd' -o "$RBD_MIRROR_KEYRING"
-    chown "${CHOWN_OPT[@]}" ceph. "$RBD_MIRROR_KEYRING"
+    ceph ${CLI_OPTS} --name client.bootstrap-rbd-mirror --keyring "$RBD_MIRROR_BOOTSTRAP_KEYRING" auth get-or-create client.rbd-mirror."${RBD_MIRROR_NAME}" mon 'profile rbd-mirror' osd 'profile rbd' -o "$RBD_MIRROR_KEYRING"
+    chown ${CHOWN_OPT} ceph. "$RBD_MIRROR_KEYRING"
     chmod 0600 "$RBD_MIRROR_KEYRING"
   fi
 
   log "SUCCESS"
   # start rbd-mirror
-  exec /usr/bin/rbd-mirror "${DAEMON_OPTS[@]}" -n client.rbd-mirror."${RBD_MIRROR_NAME}"
+  _exec /usr/bin/rbd-mirror ${DAEMON_OPTS} -n client.rbd-mirror."${RBD_MIRROR_NAME}"
 }

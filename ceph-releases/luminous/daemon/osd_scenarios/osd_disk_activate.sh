@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # shellcheck disable=SC2034
 set -e
 source /opt/ceph-container/bin/disk_list.sh
@@ -15,13 +15,13 @@ function osd_activate {
   ulimit -Sn1024
   ulimit -Hn4096
 
-  CEPH_DISK_OPTIONS=()
+  CEPH_DISK_OPTIONS=""
 
   if [[ ${OSD_FILESTORE} -eq 1 ]] && [[ ${OSD_DMCRYPT} -eq 0 ]]; then
     if [[ -n "${OSD_JOURNAL}" ]]; then
-      CLI+=("${OSD_JOURNAL}")
+      CLI="${CLI} ${OSD_JOURNAL}"
     else
-      CLI+=("${OSD_DEVICE}")
+      CLI="${CLI} ${OSD_DEVICE}"
     fi
     export DISK_LIST_SEARCH=journal
     start_disk_list
@@ -43,21 +43,21 @@ function osd_activate {
   if [[ ${OSD_DMCRYPT} -eq 1 ]] && [[ ${OSD_FILESTORE} -eq 1 ]]; then
     get_dmcrypt_filestore_uuid
     mount_lockbox "$DATA_UUID" "$LOCKBOX_UUID"
-    CEPH_DISK_OPTIONS+=('--dmcrypt')
+    CEPH_DISK_OPTIONS="${CEPH_DISK_OPTIONS} --dmcrypt"
     MOUNTED_PART="/dev/mapper/${DATA_UUID}"
     open_encrypted_parts_filestore
   elif [[ ${OSD_DMCRYPT} -eq 1 ]] && [[ ${OSD_BLUESTORE} -eq 1 ]]; then
     get_dmcrypt_bluestore_uuid
     mount_lockbox "$DATA_UUID" "$LOCKBOX_UUID"
-    CEPH_DISK_OPTIONS+=('--dmcrypt')
+    CEPH_DISK_OPTIONS="${CEPH_DISK_OPTIONS} --dmcrypt"
     MOUNTED_PART="/dev/mapper/${DATA_UUID}"
     open_encrypted_parts_bluestore
   fi
 
-  if [[ -z "${CEPH_DISK_OPTIONS[*]}" ]]; then
+  if [[ -z "${CEPH_DISK_OPTIONS}" ]]; then
     ceph-disk -v --setuser ceph --setgroup disk activate --no-start-daemon "${DATA_PART}"
   else
-    ceph-disk -v --setuser ceph --setgroup disk activate "${CEPH_DISK_OPTIONS[@]}" --no-start-daemon "${DATA_PART}"
+    ceph-disk -v --setuser ceph --setgroup disk activate ${CEPH_DISK_OPTIONS} --no-start-daemon "${DATA_PART}"
   fi
 
   if [[ ${OSD_DMCRYPT} -eq 1 ]]; then
@@ -96,6 +96,6 @@ function osd_activate {
     # LimitNOFILE=1048576
     # LimitNPROC=1048576
     ulimit -n 1048576 -u 1048576
-    exec /usr/bin/ceph-osd "${CLI_OPTS[@]}" -f -i "${OSD_ID}" --setuser ceph --setgroup disk
+    _exec /usr/bin/ceph-osd ${CLI_OPTS} -f -i "${OSD_ID}" --setuser ceph --setgroup disk
   fi
 }

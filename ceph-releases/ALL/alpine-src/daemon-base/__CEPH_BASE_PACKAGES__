@@ -1,0 +1,7 @@
+ca-certificates e2fsprogs \
+/var/tmp/packages/*/*.apk \
+bash eudev gptfdisk kmod lvm2 nvme-cli sg3_utils smartmontools uuidgen \
+attr coreutils cryptsetup device-mapper lsblk sgdisk wipefs \
+curl openssh-keygen py3-kubernetes \
+__UTIL_PACKAGES__ \
+__GANESHA_PACKAGES__

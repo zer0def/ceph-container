@@ -1,0 +1,1 @@
+apk add --no-cache __CEPH_BASE_PACKAGES__ py3-pip && pip install --break-system-packages --no-cache-dir -U setuptools==69.5.1 && apk del py3-pip

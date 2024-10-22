@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function start_rbd_target_api {
@@ -21,5 +21,5 @@ function start_rbd_target_api {
 
   log "SUCCESS"
   # start rbd-target-api
-  exec /usr/bin/rbd-target-api
+  _exec /usr/bin/rbd-target-api
 }

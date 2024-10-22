@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #populate the KV store with ceph.conf parameters
 set -x
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -uo pipefail
 
 # Make subshells use '-uo pipefail'
@@ -113,8 +113,8 @@ function get_flavors_to_build () {
 function extract_ceph_codename () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  echo "${flavor_array[0]}"
+  local flavor_array="${flavor//,/ }"
+  echo "${flavor_array%% *}"
 }
 
 # Given a flavor, extract the distro (e.g., centos)
@@ -122,8 +122,9 @@ function extract_ceph_codename () {
 function extract_distro () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  local flavor="${flavor_array[1]}"  # e.g., centos
+  local flavor_array="${flavor//,/ }"
+  local flavor="${flavor_array%% *}"
+  local flavor="${flavor_array##* }"  # e.g., centos
   echo "${flavor%-arm64}"
 }
 
@@ -131,8 +132,8 @@ function extract_distro () {
 function extract_distro_release () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  echo "${flavor_array[2]}"
+  local flavor_array="${flavor//,/ }"
+  echo "${flavor_array##* }"
 }
 
 # Return the arch-specific image repo
@@ -379,7 +380,7 @@ function get_latest_full_semver_tag () {
     # date %Y%m%d
     local build_num ; build_num="$(generate_new_build_number)"
     build_num=$((build_num - 1))
-    if [[ $repository =~ .*amd64.* ]]; then
+    if echo -n "${repository}" | grep -q amd64; then
       build_num=$((build_num - 1))  # Subtract more from build num for amd64 test images
     fi
     local test_tag="${REGISTRY}/${PUSH_LIBRARY}/${repository}:${full_semver_version_tag}-${build_num}"
@@ -478,7 +479,7 @@ function do_push () {
 # Given the full tag (lib/repo:tag) of an image, pull it
 function do_pull () {
   local image_library_repo_tag="${1}"
-  if [ -n "${TEST_RUN:-}" ] && [[ "${image_library_repo_tag}" =~ "${PUSH_LIBRARY}"/.* ]]; then
+  if [ -n "${TEST_RUN:-}" ] && echo -n "${image_library_repo_tag}" | grep -q "${PUSH_LIBRARY}/"; then
     # For tests, don't try to build images for the ones we build in these scripts
     test_info "do_pull - Not pulling image ${image_library_repo_tag}"
     return

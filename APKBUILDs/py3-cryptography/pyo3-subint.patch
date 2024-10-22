@@ -1,0 +1,25 @@
+diff --git a/Cargo.toml b/Cargo.toml
+--- a/Cargo.toml	2024-12-12 22:01:36.699757860 +0100
++++ b/Cargo.toml	2024-12-12 22:28:28.641173994 +0100
+@@ -20,7 +20,7 @@ rust-version = "1.65.0"
+ 
+ [workspace.dependencies]
+ asn1 = { version = "0.20.0", default-features = false }
+-pyo3 = { version = "0.23.2", features = ["abi3"] }
++pyo3 = { git = "https://github.com/zer0def/pyo3", branch = "subint-0.23", features = ["abi3", "unsafe-allow-subinterpreters"] }
+ 
+ [profile.release]
+ overflow-checks = true
+diff --git a/pyproject.toml b/pyproject.toml
+index 03b178d1d..ae6489e97 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -84,7 +84,7 @@ python-source = "src"
+ python-packages = ["cryptography"]
+ manifest-path = "src/rust/Cargo.toml"
+ module-name = "cryptography.hazmat.bindings._rust"
+-locked = true
++locked = false
+ sdist-generator = "git"
+ features = ["pyo3/abi3-py37"]
+ include = [

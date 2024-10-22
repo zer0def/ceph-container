@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -e
 shopt -s extglob # enable extended pattern matching features
 
@@ -49,11 +49,7 @@ cherry_pick () {
   for com in ${commit//,/ }; do
     x="$x $com"
   done
-  # Trim the first white space and use an array
-  # Reference: https://github.com/koalaman/shellcheck/wiki/SC2086#exceptions
-  # shellcheck disable=SC2206
-  x=(${x##*( )})
-  git cherry-pick -x -s "${x[@]}"
+  git cherry-pick -x -s ${x}
 }
 
 push () {

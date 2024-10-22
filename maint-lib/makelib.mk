@@ -12,7 +12,7 @@ HOST_ARCH ?= $(shell uname -m)
 #   necessary to pass HOST_ARCH in so we can do parallel cross-builds of different arches later.
 comma := ,
 define set_env_vars
-$(shell bash -c 'set -eu ; \
+$(shell sh -c 'set -eu ; \
 	function set_var () { export $$1="$$2" ; echo -n $$1="\"$$2\" " ; } ; \
 	function val_or_default () { if [ -n "$$1" ]; then echo "$$1" ; else echo "$$2" ; fi ; } ; \
 	set_var HOST_ARCH          "$(word 1, $(subst $(comma), ,$(1)))" ; \
