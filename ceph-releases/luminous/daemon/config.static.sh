@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function get_admin_key {
@@ -59,17 +59,17 @@ ENDHERE
     fsid=$(grep "fsid" /etc/ceph/"${CLUSTER}".conf | awk '{print $NF}')
   fi
 
-  CLI+=("--set-uid=0")
+  CLI="${CLI} --set-uid=0"
 
   if [ ! -e "$ADMIN_KEYRING" ]; then
     if [ -z "$ADMIN_SECRET" ]; then
       # Automatically generate administrator key
-      CLI+=(--gen-key)
+      CLI="${CLI} --gen-key"
     else
       # Generate custom provided administrator key
-      CLI+=("--add-key=$ADMIN_SECRET")
+      CLI="${CLI} --add-key=$ADMIN_SECRET"
     fi
-    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin "${CLI[@]}" --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin ${CLI} --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
   fi
 
   if [ ! -e "$MON_KEYRING" ]; then
@@ -97,7 +97,7 @@ ENDHERE
     ceph-authtool "$RBD_MIRROR_BOOTSTRAP_KEYRING" --create-keyring --gen-key -n client.bootstrap-rbd --cap mon 'allow profile bootstrap-rbd'
   fi
     # Apply proper permissions to the keys
-    chown "${CHOWN_OPT[@]}" ceph. "$MON_KEYRING" "$OSD_BOOTSTRAP_KEYRING" "$MDS_BOOTSTRAP_KEYRING" "$RGW_BOOTSTRAP_KEYRING" "$RBD_MIRROR_BOOTSTRAP_KEYRING"
+    chown ${CHOWN_OPT} ceph. "$MON_KEYRING" "$OSD_BOOTSTRAP_KEYRING" "$MDS_BOOTSTRAP_KEYRING" "$RGW_BOOTSTRAP_KEYRING" "$RBD_MIRROR_BOOTSTRAP_KEYRING"
 
   if [ ! -e "$MONMAP" ]; then
     if [ -e /etc/ceph/monmap ]; then
@@ -107,7 +107,7 @@ ENDHERE
       # Generate initial monitor map
       monmaptool --create --add "${MON_NAME}" "${MON_IP}:6789" --fsid "${fsid}" "$MONMAP"
     fi
-    chown "${CHOWN_OPT[@]}" ceph. "$MONMAP"
+    chown ${CHOWN_OPT} ceph. "$MONMAP"
   fi
 }
 

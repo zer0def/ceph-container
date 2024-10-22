@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function osd_volume_simple {
@@ -59,9 +59,9 @@ function osd_volume_lvm {
 
   # Discover the objectstore
   if [[ "data journal" =~ $OSD_TYPE ]]; then
-    OSD_OBJECTSTORE=(--filestore)
+    OSD_OBJECTSTORE="--filestore"
   elif [[ "block wal db" =~ $OSD_TYPE ]]; then
-    OSD_OBJECTSTORE=(--bluestore)
+    OSD_OBJECTSTORE="--bluestore"
   else
     log "Unable to discover osd objectstore for OSD type: $OSD_TYPE"
     exit 1
@@ -69,7 +69,7 @@ function osd_volume_lvm {
 
   # Activate the OSD
   # The command can fail so if it does, let's output the ceph-volume logs
-  if ! ceph-volume lvm activate --no-systemd "${OSD_OBJECTSTORE[@]}" "${OSD_ID}" "${OSD_FSID}"; then
+  if ! ceph-volume lvm activate --no-systemd ${OSD_OBJECTSTORE} "${OSD_ID}" "${OSD_FSID}"; then
     cat /var/log/ceph
     exit 1
   fi
@@ -125,5 +125,5 @@ function osd_volume_activate {
   # LimitNOFILE=1048576
   # LimitNPROC=1048576
   ulimit -n 1048576 -u 1048576
-  exec /usr/bin/ceph-osd "${DAEMON_OPTS[@]}" -i "${OSD_ID}"
+  exec /usr/bin/ceph-osd ${DAEMON_OPTS} -i "${OSD_ID}"
 }

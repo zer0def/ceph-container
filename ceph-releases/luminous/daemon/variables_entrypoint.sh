@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 
 ###################################
@@ -76,28 +76,27 @@ while read -r line; do
 done < <(env)
 
 # Create a default array
-CRUSH_LOCATION_DEFAULT=("root=default" "host=${HOSTNAME}")
-[[ -n "$CRUSH_LOCATION" ]] || read -ra CRUSH_LOCATION <<< "${CRUSH_LOCATION_DEFAULT[@]}"
+[[ -n "$CRUSH_LOCATION" ]] || CRUSH_LOCATION="root=default host=${HOSTNAME}"
 
 # This is ONLY used for the CLI calls, e.g: ceph $CLI_OPTS health
-CLI_OPTS=(--cluster ${CLUSTER})
+CLI_OPTS="--cluster ${CLUSTER}"
 
 # This is ONLY used for the daemon's startup, e.g: ceph-osd $DAEMON_OPTS
-DAEMON_OPTS=(--cluster ${CLUSTER} --setuser ceph --setgroup ceph -d)
+DAEMON_OPTS="--cluster ${CLUSTER} --setuser ceph --setgroup ceph -d"
 
-MOUNT_OPTS=(-t xfs -o noatime,inode64)
+MOUNT_OPTS="-t xfs -o noatime,inode64"
 
 # make sure etcd uses http or https as a prefix
 if [[ "$KV_TYPE" == "etcd" ]]; then
   if [ -n "${KV_CA_CERT}" ]; then
     CONFD_NODE_SCHEMA="https://"
-    KV_TLS=(--ca-file=${KV_CA_CERT} --cert-file=${KV_CLIENT_CERT} --key-file=${KV_CLIENT_KEY})
-    CONFD_KV_TLS=(-scheme=https -client-ca-keys=${KV_CA_CERT} -client-cert=${KV_CLIENT_CERT} -client-key=${KV_CLIENT_KEY})
+    KV_TLS="--ca-file=${KV_CA_CERT} --cert-file=${KV_CLIENT_CERT} --key-file=${KV_CLIENT_KEY}"
+    CONFD_KV_TLS="-scheme=https -client-ca-keys=${KV_CA_CERT} -client-cert=${KV_CLIENT_CERT} -client-key=${KV_CLIENT_KEY}"
   else
     CONFD_NODE_SCHEMA="http://"
   fi
   ETCD_SCHEMA=${CONFD_NODE_SCHEMA}
-  ETCDCTL_OPTS=(--peers ${ETCD_SCHEMA}${KV_IP}:${KV_PORT})
+  ETCDCTL_OPTS="--peers ${ETCD_SCHEMA}${KV_IP}:${KV_PORT}"
 fi
 
 if command -v python &>/dev/null; then

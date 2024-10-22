@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 function mon_systemd {
   cat <<EOF  > ${HOST}/etc/systemd/system/multi-user.target.wants/ceph-mon@${MON_NAME}.service
 [Unit]

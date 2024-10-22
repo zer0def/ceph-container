@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -uo pipefail
 
 # Make subshells use '-uo pipefail'
@@ -113,8 +113,8 @@ function get_flavors_to_build () {
 function extract_ceph_codename () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  echo "${flavor_array[0]}"
+  local flavor_array="${flavor//,/ }"
+  echo "${flavor_array%% *}"
 }
 
 # Given a flavor, extract the distro (e.g., centos)
@@ -122,8 +122,9 @@ function extract_ceph_codename () {
 function extract_distro () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  local flavor="${flavor_array[1]}"  # e.g., centos
+  local flavor_array="${flavor//,/ }"
+  local flavor="${flavor_array%% *}"
+  local flavor="${flavor_array##* }"  # e.g., centos
   echo "${flavor%-arm64}"
 }
 
@@ -131,8 +132,8 @@ function extract_distro () {
 function extract_distro_release () {
   local flavor="${1}"
   # shellcheck disable=2206 # quoting to prevent word splitting below breaks conversion to array
-  local flavor_array=(${flavor//,/ })
-  echo "${flavor_array[2]}"
+  local flavor_array="${flavor//,/ }"
+  echo "${flavor_array##* }"
 }
 
 # Return the arch-specific image repo

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 function get_admin_key {
@@ -60,12 +60,12 @@ ENDHERE
   if [ ! -e "$ADMIN_KEYRING" ]; then
     if [ -z "$ADMIN_SECRET" ]; then
       # Automatically generate administrator key
-      CLI+=(--gen-key)
+      CLI="${CLI} --gen-key"
     else
       # Generate custom provided administrator key
-      CLI+=("--add-key=$ADMIN_SECRET")
+      CLI="${CLI} --add-key=$ADMIN_SECRET"
     fi
-    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin "${CLI[@]}" --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+    ceph-authtool "$ADMIN_KEYRING" --create-keyring -n client.admin ${CLI} --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
   fi
 
   if [ ! -e "$MON_KEYRING" ]; then
@@ -74,7 +74,7 @@ ENDHERE
   fi
 
   # Apply proper permissions to the keys
-  chown "${CHOWN_OPT[@]}" ceph. "$MON_KEYRING" "$ADMIN_KEYRING"
+  chown ${CHOWN_OPT} ceph. "$MON_KEYRING" "$ADMIN_KEYRING"
 
   if [ ! -e "$MONMAP" ]; then
     if [ -e /etc/ceph/monmap ]; then
@@ -84,7 +84,7 @@ ENDHERE
       # Generate initial monitor map
       monmaptool --create --add "${MON_NAME}" "${MON_IP}:${MON_PORT}" --fsid "${fsid}" "$MONMAP"
     fi
-    chown "${CHOWN_OPT[@]}" ceph. "$MONMAP"
+    chown ${CHOWN_OPT} ceph. "$MONMAP"
   fi
 }
 

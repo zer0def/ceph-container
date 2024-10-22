@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # vim: set expandtab ts=2 sw=2 :
 
 set -ex
@@ -51,7 +51,7 @@ OSD_FLAVOR=${OSD_FLAVOR:=default}
 
 if [ -z "$CEPH_RELEASES" ]; then
   # NEVER change 'main' position in the array, this will break the 'latest' tag
-  CEPH_RELEASES=(main quincy reef squid)
+  CEPH_RELEASES="main quincy reef squid"
 fi
 
 HOST_ARCH=$(uname -m)
@@ -147,7 +147,7 @@ function grep_sort_tags {
 function compare_registry_and_github_tags {
   # build an array with the list of tags from github
   for tag_github in $(grep_sort_tags git ls-remote --tags --refs 2>/dev/null); do
-    tags_github_array+=("$tag_github")
+    tags_github_array="${tags_github_array} $tag_github"
   done
 
   # build an array with the list of tag from the registry
@@ -163,28 +163,28 @@ function compare_registry_and_github_tags {
   done
   tags_registry=$(grep_sort_tags echo "${tags_registry}" | uniq)
   for tag_registry in $tags_registry; do
-    tags_registry_array+=("$tag_registry")
+    tags_registry_array="${tags_registry_array} $tag_registry"
   done
 
   # we now look into each array and find a possible missing tag
   # the idea is to find if a tag present on github is not present on the registry
-  for i in "${tags_github_array[@]}"; do
+  for i in ${tags_github_array}; do
     # the grep has a conditionnal on either the explicit match last character is the end of the line OR
     # it has a space after it so we cover the case where the tag that matches is placed at the end
     # of the line or the first one
-    echo "${tags_registry_array[@]}" | grep -qoE "${i}$|${i} " || tag_to_build+=("$i")
+    echo ${tags_registry_array} | grep -qoE "${i}$|${i} " || tag_to_build="${tag_to_build} ${i}"
   done
 
   # if there is an entry we activate TAGGED_HEAD which tells the script to build a release image
   # we must find a single tag only
-  if [[ ${#tag_to_build[@]} -eq "1" ]]; then
+  if [[ $(echo ${tag_to_build} | tr '[:space:]' '\n' | wc -l) -eq "1" ]]; then
     TAGGED_HEAD=true
-    echo "${tag_to_build[*]} not found! Building it."
+    echo "${tag_to_build} not found! Building it."
   fi
 
   # if we find more than one release, we should fail and report the problem
-  if [[ ${#tag_to_build[@]} -gt "1" ]]; then
-    echo "ERROR: it looks like more than one tag are not built, see ${tag_to_build[*]}."
+  if [[ $(echo ${tag_to_build} | tr '[:space:]' '\n' | wc -l) -gt "1" ]]; then
+    echo "ERROR: it looks like more than one tag are not built, see ${tag_to_build}."
   fi
 }
 
@@ -203,26 +203,24 @@ function create_head_or_point_release {
     # wait for the arm64 image for the manifest creation as we only have one image to build
     BUILD_ARM=true
     # checkout tag's code
-    # using [*] but [0] would work too, also the array's length should be 1 anyway
-    # this code is only activated if length is 1 so we are safe
-    git checkout refs/tags/"${tag_to_build[*]}"
+    git checkout refs/tags/"${tag_to_build}"
 
     # find branch associated to that tag
-    CONTAINER_BRANCH=$(git branch -r --contains tags/"${tag_to_build[*]}" | grep -Eo 'stable-[0-9].[0-9]')
-    echo "Building a release Ceph container image based on branch $CONTAINER_BRANCH and tag ${tag_to_build[*]}"
-    RELEASE="${tag_to_build[*]}-$CONTAINER_BRANCH"
+    CONTAINER_BRANCH=$(git branch -r --contains tags/"${tag_to_build}" | grep -Eo 'stable-[0-9].[0-9]')
+    echo "Building a release Ceph container image based on branch $CONTAINER_BRANCH and tag ${tag_to_build}"
+    RELEASE="${tag_to_build}-$CONTAINER_BRANCH"
     # (todo): remove this when we have a better solution like running
     # the build script directly from the right branch.
     if [ "${CONTAINER_BRANCH}" == "stable-3.2" ]; then
-      CEPH_RELEASES=(luminous mimic)
+      CEPH_RELEASES="luminous mimic"
     elif [ "${CONTAINER_BRANCH}" == "stable-4.0" ]; then
-      CEPH_RELEASES=(nautilus)
+      CEPH_RELEASES="nautilus"
     elif [ "${CONTAINER_BRANCH}" == "stable-5.0" ]; then
-      CEPH_RELEASES=(octopus)
+      CEPH_RELEASES="octopus"
     elif [ "${CONTAINER_BRANCH}" == "stable-6.0" ]; then
-      CEPH_RELEASES=(pacific)
+      CEPH_RELEASES="pacific"
     elif [ "${CONTAINER_BRANCH}" == "stable-7.0" ]; then
-      CEPH_RELEASES=(quincy)
+      CEPH_RELEASES="quincy"
     fi
   else
     set -e
@@ -320,11 +318,11 @@ function push_ceph_imgs_latest {
     return
   fi
 
-  for release in "${CEPH_RELEASES[@]}" latest; do
+  for release in ${CEPH_RELEASES} latest; do
     if [[ "$release" == "latest" ]]; then
       latest_name="latest"
       # Use the last item in the array which corresponds to the latest stable Ceph version
-      release=${CEPH_RELEASES[-1]}
+      release="${CEPH_RELEASES##* }"
     else
       latest_name="latest-$release"
     fi
@@ -350,8 +348,8 @@ function wait_for_arm_images {
   fi
   echo "Waiting for ARM64 images to be ready"
   set -e
-  CENTOS_RELEASE=$(_centos_release "${CEPH_RELEASES[-1]}")
-  until docker pull "${CONTAINER_REPO_ORGANIZATION}"/daemon:"$RELEASE"-"${CEPH_RELEASES[-1]}"-centos-stream"${CENTOS_RELEASE}"-aarch64; do
+  CENTOS_RELEASE=$(_centos_release "${CEPH_RELEASES##* }")
+  until docker pull "${CONTAINER_REPO_ORGANIZATION}"/daemon:"$RELEASE"-"${CEPH_RELEASES##* }"-centos-stream"${CENTOS_RELEASE}"-aarch64; do
     echo -n .
     sleep 30
   done
@@ -365,7 +363,7 @@ function create_registry_manifest {
   # IIRC docker manisfest will fail if the image does not exist
   rm -rvf ~/.docker/manifests
   for image in daemon-base demo; do
-    for ceph_release in "${CEPH_RELEASES[@]}"; do
+    for ceph_release in ${CEPH_RELEASES}; do
       TARGET_RELEASE="${CONTAINER_REPO_ORGANIZATION}/${image}:${RELEASE}-${ceph_release}-centos-stream$(_centos_release "${ceph_release}")"
       DOCKER_IMAGES="$TARGET_RELEASE ${TARGET_RELEASE}-x86_64"
 
@@ -402,7 +400,7 @@ login_registry
 if ${CI_CONTAINER}; then
   RELEASE=${CEPH_BRANCH}-${SHA1:0:7}
   top_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
-  CEPH_VERSION=$(bash "${top_dir}"/maint-lib/ceph_version.sh "${CEPH_BRANCH}" CEPH_VERSION)
+  CEPH_VERSION=$(sh "${top_dir}"/maint-lib/ceph_version.sh "${CEPH_BRANCH}" CEPH_VERSION)
 else
   create_head_or_point_release
 fi

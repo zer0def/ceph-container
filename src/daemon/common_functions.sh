@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 source /opt/ceph-container/bin/disk_list.sh
 
@@ -86,8 +86,8 @@ function create_mandatory_directories {
   mkdir -p /var/lib/ceph/mgr/"${CLUSTER}-$MGR_NAME"
 
   # Adjust the owner of all those directories
-  chown "${CHOWN_OPT[@]}" -R ceph. /var/run/ceph/
-  find -L /var/lib/ceph/ -mindepth 1 -maxdepth 3 -not \( -user ceph -or -group ceph \) -exec chown "${CHOWN_OPT[@]}" ceph. {} \;
+  chown ${CHOWN_OPT} -R ceph. /var/run/ceph/
+  find -L /var/lib/ceph/ -mindepth 1 -maxdepth 3 -not \( -user ceph -or -group ceph \) -exec chown ${CHOWN_OPT} ceph. {} \;
 }
 
 # Print resolved symbolic links of a device
@@ -216,7 +216,7 @@ function is_redhat {
 
 # Wait for a file to exist, regardless of the type
 function wait_for_file {
-  timeout 10 bash -c "while [ ! -e ${1} ]; do echo 'Waiting for ${1} to show up' && sleep 1 ; done"
+  timeout 10 sh -c "while [ ! -e ${1} ]; do echo 'Waiting for ${1} to show up' && sleep 1 ; done"
 }
 
 function valid_scenarios {
@@ -267,15 +267,14 @@ function apply_ceph_ownership_to_disks {
   if [[ ${OSD_DMCRYPT} -eq 1 ]]; then
     if [[ -b "$(dev_part "${OSD_DEVICE}" 3)" ]]; then
       wait_for_file "$(dev_part "${OSD_DEVICE}" 3)"
-      chown "${CHOWN_OPT[@]}" ceph. "$(dev_part "${OSD_DEVICE}" 3)"
+      chown ${CHOWN_OPT} ceph. "$(dev_part "${OSD_DEVICE}" 3)"
     else
       wait_for_file "$(dev_part "${OSD_DEVICE}" 5)"
-      chown "${CHOWN_OPT[@]}" ceph. "$(dev_part "${OSD_DEVICE}" 5)"
+      chown ${CHOWN_OPT} ceph. "$(dev_part "${OSD_DEVICE}" 5)"
     fi
   fi
   if [[ ${OSD_BLUESTORE} -eq 1 ]]; then
-    mapfile -t dev_real_path < <(resolve_symlink "$OSD_BLUESTORE_BLOCK_WAL" "$OSD_BLUESTORE_BLOCK_DB")
-    for partition in $(list_dev_partitions "$OSD_DEVICE" "${dev_real_path[@]}"); do
+    for partition in $(list_dev_partitions "$OSD_DEVICE" $(resolve_symlink "$OSD_BLUESTORE_BLOCK_WAL" "$OSD_BLUESTORE_BLOCK_DB")); do
       part_code=$(get_part_typecode "$partition")
       if [[ "$part_code" == "5ce17fce-4087-4169-b7ff-056cc58472be" ||
             "$part_code" == "5ce17fce-4087-4169-b7ff-056cc58473f9" ||
@@ -284,20 +283,20 @@ function apply_ceph_ownership_to_disks {
             "$part_code" == "89c57f98-2fe5-4dc0-89c1-f3ad0ceff2be" ||
             "$part_code" == "cafecafe-9b03-4f30-b4c6-b4b80ceff106" ]]; then
         wait_for_file "$partition"
-        chown "${CHOWN_OPT[@]}" ceph. "$partition"
+        chown ${CHOWN_OPT} ceph. "$partition"
       fi
     done
   elif [[ ${OSD_FILESTORE} -eq 1 ]]; then
     if [[ -n "${OSD_JOURNAL}" ]]; then
       wait_for_file "${OSD_JOURNAL}"
-      chown "${CHOWN_OPT[@]}" ceph. "${OSD_JOURNAL}"
+      chown ${CHOWN_OPT} ceph. "${OSD_JOURNAL}"
     else
       wait_for_file "$(dev_part "${OSD_DEVICE}" 2)"
-      chown "${CHOWN_OPT[@]}" ceph. "$(dev_part "${OSD_DEVICE}" 2)"
+      chown ${CHOWN_OPT} ceph. "$(dev_part "${OSD_DEVICE}" 2)"
     fi
   fi
   wait_for_file "$(dev_part "${OSD_DEVICE}" 1)"
-  chown "${CHOWN_OPT[@]}" ceph. "$(dev_part "${OSD_DEVICE}" 1)"
+  chown ${CHOWN_OPT} ceph. "$(dev_part "${OSD_DEVICE}" 1)"
 }
 
 # Get partition uuid of a given partition
@@ -321,7 +320,7 @@ function ceph_health {
   local bootstrap_user=$1
   local bootstrap_key=$2
 
-  if ! timeout 10 ceph "${CLI_OPTS[@]}" --name "$bootstrap_user" --keyring "$bootstrap_key" health; then
+  if ! timeout 10 ceph ${CLI_OPTS} --name "$bootstrap_user" --keyring "$bootstrap_key" health; then
     log "Timed out while trying to reach out to the Ceph Monitor(s)."
     log "Make sure your Ceph monitors are up and running in quorum."
     log "Also verify the validity of $bootstrap_user keyring."
@@ -465,7 +464,7 @@ function open_encrypted_part {
   # $2 is partition name, e.g: /dev/sda1
   # $3 is the 'ceph data' partition uuid, this is the one used by the lockbox
   log "Opening encrypted device $1"
-  ceph "${CLI_OPTS[@]}" --name client.osd-lockbox."${3}" \
+  ceph ${CLI_OPTS} --name client.osd-lockbox."${3}" \
   --keyring /var/lib/ceph/osd-lockbox/"${3}"/keyring \
   config-key \
   get \
@@ -481,7 +480,7 @@ function mount_lockbox {
   local ceph_fsid
   ceph_fsid=$(ceph-conf --lookup fsid -c /etc/ceph/"$CLUSTER".conf)
   echo "$ceph_fsid" > /var/lib/ceph/osd-lockbox/"${1}"/ceph_fsid
-  chown "${CHOWN_OPT[@]}" ceph. /var/lib/ceph/osd-lockbox/"${1}"/ceph_fsid
+  chown ${CHOWN_OPT} ceph. /var/lib/ceph/osd-lockbox/"${1}"/ceph_fsid
 }
 
 # Closes an encrypted partition
@@ -490,7 +489,7 @@ function close_encrypted_part {
   # $2 is partition name, e.g: /dev/sda1
   # $3 is the 'ceph data' partition uuid, this is the one used by the lockbox
   log "Closing encrypted device $1"
-  ceph "${CLI_OPTS[@]}" --name client.osd-lockbox."${3}" \
+  ceph ${CLI_OPTS} --name client.osd-lockbox."${3}" \
   --keyring /var/lib/ceph/osd-lockbox/"${3}"/keyring \
   config-key \
   get \

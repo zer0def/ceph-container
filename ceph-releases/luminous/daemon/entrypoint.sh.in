@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # We need the -m to track child process in docker_exec.sh
 # It is expected to receive some SIGCHLD, so -m is mandatory

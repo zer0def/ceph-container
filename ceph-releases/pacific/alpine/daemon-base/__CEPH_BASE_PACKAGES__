@@ -1,0 +1,13 @@
+ca-certificates e2fsprogs \
+ceph16-common ceph16-mon ceph16-osd \
+__CEPHFS_PACKAGES__ \
+rbd-mirror16 \
+__CEPH_MGR_PACKAGES__ \
+__CEPH_GRAFANA_PACKAGES__ \
+kmod lvm2 gptfdisk smartmontools nvme-cli eudev sg3_utils \
+__UTIL_PACKAGES__ \
+__RADOSGW_PACKAGES__ \
+__GANESHA_PACKAGES__ \
+__ISCSI_PACKAGES__ \
+__CSI_PACKAGES__ \
+__CEPH_VOLUME_PACKAGE__

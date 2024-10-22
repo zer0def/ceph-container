@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # use -E so that trap ERR works with set -e
 set -E
@@ -14,7 +14,7 @@ function do_stayalive {
   CONTAINER_ID=$(sed -n 's|.*/[docker|libpod]*-\(.*\).scope$|\1|p' /proc/self/cgroup |uniq)
 
   echo "An issue occured and you asked me to stay alive."
-  echo "You can connect to me with: sudo docker exec -i -t $CONTAINER_ID /bin/bash"
+  echo "You can connect to me with: sudo docker exec -i -t $CONTAINER_ID /bin/sh"
   echo "The current environment variables will be reloaded by this bash to be in a similar context."
   echo "When debugging is over stop me with: pkill sleep"
   echo "I'll sleep endlessly waiting for you darling, bye bye"

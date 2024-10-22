@@ -1,6 +1,6 @@
 yum install -y epel-release && \
 yum install -y jq && \
-bash -c ' \
+sh -c ' \
   if [ -n "__GANESHA_PACKAGES__" ]; then \
     if [[ "${CEPH_VERSION}" =~ master|main|quincy|reef|squid ]]; then \
       echo "[ganesha]" > /etc/yum.repos.d/ganesha.repo ; \
@@ -65,7 +65,7 @@ if [[ "${CEPH_VERSION}" == nautilus ]]; then \
     fi ; \
   fi ; \
 fi && \
-bash -c ' \
+sh -c ' \
   if [[ "${CEPH_VERSION}" =~ master  || "${CEPH_VERSION}" == main ]] || ${CEPH_DEVEL}; then \
     ARCH=$(arch); \
     if [[ "${ARCH}" == "aarch64" ]]; then \

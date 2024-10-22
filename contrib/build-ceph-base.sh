@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -Eeuo pipefail
 # -E option is 'errtrace' and is needed for -e to fail properly from subshell failures
 
