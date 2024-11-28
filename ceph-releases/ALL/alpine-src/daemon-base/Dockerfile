@@ -11,7 +11,6 @@ RUN set -e; apk update; apk add --allow-untrusted --no-cache /var/tmp/packages/*
   su -s /bin/sh -c 'export HOME=/var/tmp; cd /build; JOBS=$(nproc) abuild -Kmr  #-F' bin; \
   rm /var/tmp/packages/*/ceph*-bash-completion-*.apk \
      /var/tmp/packages/*/ceph*-dev-*.apk \
-     /var/tmp/packages/*/ceph*-diskprediction-*.apk \
      /var/tmp/packages/*/ceph*-doc-*.apk \
      /var/tmp/packages/*/ceph*-openrc-*.apk \
      /var/tmp/packages/*/cephfs*-mirror-*.apk \
